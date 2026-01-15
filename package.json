@@ -1,0 +1,19 @@
+{
+  "name": "web5-modules-monorepo",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "dev:console": "pnpm --filter @web5-modules/console dev",
+    "dev:keystore": "pnpm --filter @web5-modules/keystore dev",
+    "dev:did": "pnpm --filter @web5-modules/did dev",
+    "dev:pds": "pnpm --filter @web5-modules/pds dev"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "turbo": "^2.3.0"
+  }
+}
