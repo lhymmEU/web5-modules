@@ -1,68 +1,78 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, Plus, Trash2, Key } from 'lucide-react';
 import { decryptData, encryptData, generateSecp256k1KeyPair } from '../utils/crypto';
-import { deleteSigningKey, getSigningKey, saveSigningKey, STORAGE_KEY_SIGNING_KEY } from '../utils/storage';
+import { 
+  addKey, 
+  deleteKey, 
+  getAllKeys, 
+  getActiveKey, 
+  setActiveKey, 
+  type KeyEntry
+} from '../utils/storage';
 import { PasswordModal } from './PasswordModal';
 
 export function KeyStore() {
-  const [didKey, setDidKey] = useState<string | null>(null);
-  const [hasExistingKey, setHasExistingKey] = useState(false);
+  const [keys, setKeys] = useState<KeyEntry[]>([]);
+  const [activeKey, setActiveKeyLocal] = useState<KeyEntry | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<null | 'ok' | 'error'>(null);
-  const [passwordPrompt, setPasswordPrompt] = useState<null | { mode: 'export' | 'import'; encryptedFile?: string }>(
-    null
-  );
+  // const [copyStatus, setCopyStatus] = useState<null | 'ok' | 'error'>(null);
+  
+  // Backup/Restore states
+  const [passwordPrompt, setPasswordPrompt] = useState<null | { mode: 'export' | 'import'; encryptedFile?: string }>(null);
   const [passwordPromptBusy, setPasswordPromptBusy] = useState(false);
   const [passwordPromptError, setPasswordPromptError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // New Key Modal
+  const [showNewKeyModal, setShowNewKeyModal] = useState(false);
+  const [newKeyAlias, setNewKeyAlias] = useState('');
+
   const refreshFromStorage = () => {
-    const existing = getSigningKey();
-    if (existing?.didKey) {
-      setDidKey(existing.didKey);
-      setHasExistingKey(true);
-      return;
-    }
-    setDidKey(null);
-    setHasExistingKey(false);
+    setKeys(getAllKeys());
+    setActiveKeyLocal(getActiveKey());
   };
 
   useEffect(() => {
     refreshFromStorage();
   }, []);
 
-  const onCreate = async () => {
-    if (hasExistingKey) return;
+  const handleCreateKey = async () => {
     setIsCreating(true);
     try {
       const keyPair = await generateSecp256k1KeyPair();
-      saveSigningKey({
+      addKey({
         privateKey: keyPair.privateKey,
         didKey: keyPair.didKey,
         createdAt: Date.now(),
-      });
-      setDidKey(keyPair.didKey);
-      setHasExistingKey(true);
+      }, newKeyAlias);
+      
+      setNewKeyAlias('');
+      setShowNewKeyModal(false);
+      refreshFromStorage();
     } finally {
       setIsCreating(false);
     }
   };
 
-  const onDelete = () => {
-    if (!hasExistingKey) return;
-    const confirmed = window.confirm('Are you sure you want to delete the created key? This action cannot be undone.');
+  const handleDelete = (id: string, alias: string) => {
+    const confirmed = window.confirm(`Are you sure you want to delete key "${alias}"? This action cannot be undone.`);
     if (!confirmed) return;
-    deleteSigningKey();
-    setDidKey(null);
-    setHasExistingKey(false);
+    deleteKey(id);
+    refreshFromStorage();
   };
 
+  const handleActivate = (id: string) => {
+    setActiveKey(id);
+    refreshFromStorage();
+  };
+
+  // --- Backup Logic (Simplified adapter for new storage format) ---
+  
   const listLocalStorageKeys = (): string[] => {
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (!key) continue;
-      keys.push(key);
+      if (key) keys.push(key);
     }
     return keys;
   };
@@ -73,7 +83,7 @@ export function KeyStore() {
     for (const key of keys) {
       entries[key] = localStorage.getItem(key) ?? '';
     }
-    return JSON.stringify({ version: 1, exportedAt: Date.now(), entries });
+    return JSON.stringify({ version: 2, exportedAt: Date.now(), entries });
   };
 
   const downloadTextFile = (content: string, filename: string) => {
@@ -86,32 +96,6 @@ export function KeyStore() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-  };
-
-  const clearLocalStorage = () => {
-    localStorage.clear();
-  };
-
-  const parseBackupToEntries = (plaintext: string): Record<string, string> => {
-    const parsed = JSON.parse(plaintext) as unknown;
-
-    if (typeof parsed === 'object' && parsed !== null) {
-      const maybeEntries = (parsed as { entries?: unknown }).entries;
-      if (typeof maybeEntries === 'object' && maybeEntries !== null && !Array.isArray(maybeEntries)) {
-        const entries: Record<string, string> = {};
-        for (const [k, v] of Object.entries(maybeEntries as Record<string, unknown>)) {
-          if (typeof k === 'string' && typeof v === 'string') entries[k] = v;
-        }
-        return entries;
-      }
-
-      const maybeSigningKey = parsed as { privateKey?: unknown; didKey?: unknown; createdAt?: unknown };
-      if (typeof maybeSigningKey.privateKey === 'string' && typeof maybeSigningKey.didKey === 'string') {
-        return { [STORAGE_KEY_SIGNING_KEY]: JSON.stringify(maybeSigningKey) };
-      }
-    }
-
-    throw new Error('invalid backup format');
   };
 
   const onExport = () => {
@@ -156,19 +140,24 @@ export function KeyStore() {
 
       const hasAnyExisting = localStorage.length > 0;
       if (hasAnyExisting) {
-        const confirmed = window.confirm('Are you sure you want to import the backup? This action will overwrite any existing localStorage data.');
+        const confirmed = window.confirm('Importing will overwrite current data. Continue?');
         if (!confirmed) return;
       }
 
-      const entries = parseBackupToEntries(decrypted);
-      clearLocalStorage();
+      // Simple import: just overwrite keys in localStorage
+      const parsed = JSON.parse(decrypted);
+      // Support v2 (entries) and v1 (legacy, though we dropped legacy support in code, keeping import generic)
+      const entries = parsed.entries || {};
+      
+      localStorage.clear();
       for (const [key, value] of Object.entries(entries)) {
-        localStorage.setItem(key, value);
+        if (typeof value === 'string') localStorage.setItem(key, value);
       }
+      
       refreshFromStorage();
       setPasswordPrompt(null);
     } catch {
-      setPasswordPromptError('Import failed: invalid file format or corrupted content.');
+      setPasswordPromptError('Import failed: invalid file format.');
     } finally {
       setPasswordPromptBusy(false);
     }
@@ -176,67 +165,106 @@ export function KeyStore() {
 
   return (
     <div className="card">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex flex-col gap-2">
-          <div style={{ fontWeight: 600 }}>Signing Key</div>
+          <div style={{ fontWeight: 600, fontSize: '1.2rem' }}>Signing Keys</div>
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-            Create a secp256k1 keypair and store it locally.
+            Manage your multiple identities and keys.
           </div>
+        </div>
+        <div className="flex gap-2">
+           <button className="btn btn-brown" onClick={onExport}>Export</button>
+           <button className="btn btn-brown-soft" onClick={onImport}>Import</button>
         </div>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
-        <div className="label">did:key</div>
-        <div className="flex gap-2 items-center">
-          <div className="code-block" style={{ flex: 1 }}>
-            {didKey ? didKey : 'Did not create yet'}
+      {/* Keys List */}
+      <div className="keys-list">
+        {keys.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+            No keys found. Create one to get started.
           </div>
-          <button
-            type="button"
-            className="btn-icon"
-            aria-label="Copy did:key"
-            disabled={!didKey}
-            onClick={async () => {
-              if (!didKey) return;
-              try {
-                await navigator.clipboard.writeText(didKey);
-                setCopyStatus('ok');
-                window.setTimeout(() => setCopyStatus(null), 1200);
-              } catch {
-                setCopyStatus('error');
-                window.setTimeout(() => setCopyStatus(null), 1200);
-              }
-            }}
-          >
-            <Copy size={18} color={copyStatus === 'ok' ? 'var(--success-color)' : 'var(--text-secondary)'} />
-          </button>
-        </div>
+        )}
+        
+        {keys.map(key => {
+          const isActive = activeKey?.id === key.id;
+          return (
+            <div key={key.id} className={`key-item ${isActive ? 'active' : ''}`}>
+              <div className="key-info">
+                <div className="key-header">
+                  <Key size={18} color={isActive ? '#166534' : '#64748b'} />
+                  <span className="key-alias">{key.alias}</span>
+                  {isActive && <span className="badge-active">Active</span>}
+                </div>
+                <div className="key-did" title={key.didKey}>{key.didKey}</div>
+              </div>
+              
+              <div className="key-actions">
+                {!isActive && (
+                  <button 
+                    className="btn-sm btn-outline"
+                    onClick={() => handleActivate(key.id)}
+                  >
+                    Activate
+                  </button>
+                )}
+                <button 
+                  className="btn-icon" 
+                  title="Copy DID"
+                  onClick={async () => {
+                     try {
+                       await navigator.clipboard.writeText(key.didKey);
+                       // simple toast could be here
+                     } catch {}
+                  }}
+                >
+                  <Copy size={16} />
+                </button>
+                <button 
+                  className="btn-icon danger" 
+                  title="Delete"
+                  onClick={() => handleDelete(key.id, key.alias)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="flex gap-2" style={{ marginTop: '1rem' }}>
-        <button
-          type="button"
-          className="btn btn-success"
-          onClick={onCreate}
-          disabled={isCreating || hasExistingKey}
-        >
-          Create
-        </button>
-        <button
-          type="button"
-          className="btn btn-danger"
-          onClick={onDelete}
-          disabled={!hasExistingKey || isCreating}
-        >
-          Delete
-        </button>
-        <button type="button" className="btn btn-brown" onClick={onExport} disabled={isCreating}>
-          Export
-        </button>
-        <button type="button" className="btn btn-brown-soft" onClick={onImport} disabled={isCreating}>
-          Import
-        </button>
-      </div>
+      <button 
+        className="btn btn-success mt-4 flex items-center gap-2"
+        onClick={() => setShowNewKeyModal(true)}
+      >
+        <Plus size={18} /> Create New Key
+      </button>
+
+      {/* Create Key Modal */}
+      {showNewKeyModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Create New Keypair</h3>
+            <div className="input-group vertical" style={{ marginTop: '1rem' }}>
+              <label style={{ fontSize: '0.9rem', color: '#64748b' }}>Alias (Optional)</label>
+              <input 
+                value={newKeyAlias}
+                onChange={(e) => setNewKeyAlias(e.target.value)}
+                placeholder="e.g. My Main Identity"
+                autoFocus
+              />
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              <button className="btn btn-secondary" onClick={() => setShowNewKeyModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreateKey} disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Input for Import */}
       <input
         ref={fileInputRef}
         type="file"
@@ -245,10 +273,11 @@ export function KeyStore() {
         onChange={(e) => {
           const file = e.target.files?.[0];
           e.target.value = '';
-          if (!file) return;
-          void onFileSelected(file);
+          if (file) void onFileSelected(file);
         }}
       />
+
+      {/* Password Prompt */}
       {passwordPrompt ? (
         <PasswordModal
           title={passwordPrompt.mode === 'export' ? 'Enter export password' : 'Enter import password'}
@@ -263,6 +292,100 @@ export function KeyStore() {
           onConfirm={onPasswordConfirm}
         />
       ) : null}
+
+      <style>{`
+        .keys-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .key-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          background: white;
+          transition: all 0.2s;
+        }
+        .key-item.active {
+          border-color: #22c55e;
+          background: #f0fdf4;
+          box-shadow: 0 0 0 1px #22c55e;
+        }
+        .key-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .key-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .key-alias {
+          font-weight: 600;
+          color: #334155;
+        }
+        .key-did {
+          font-family: monospace;
+          font-size: 0.8rem;
+          color: #64748b;
+        }
+        .badge-active {
+          font-size: 0.7rem;
+          background: #22c55e;
+          color: white;
+          padding: 0.1rem 0.4rem;
+          border-radius: 999px;
+          font-weight: 600;
+        }
+        .key-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .btn-sm {
+          padding: 0.25rem 0.75rem;
+          font-size: 0.85rem;
+        }
+        .btn-outline {
+          background: transparent;
+          border: 1px solid #cbd5e1;
+          color: #475569;
+        }
+        .btn-outline:hover {
+          background: #f1f5f9;
+        }
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 50;
+        }
+        .modal-content {
+          background: white;
+          padding: 2rem;
+          border-radius: 12px;
+          width: 400px;
+          max-width: 90%;
+        }
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 1rem;
+        }
+        .w-full { width: 100%; }
+        .mb-4 { margin-bottom: 1rem; }
+      `}</style>
     </div>
   );
 }
+

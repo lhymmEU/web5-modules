@@ -1,5 +1,5 @@
 import { bytesToHex, hexToBytes, signMessage, verifySignature } from './utils/crypto';
-import { getSigningKey, isOriginAllowed } from './utils/storage';
+import { getActiveKey, isOriginAllowed } from './utils/storage';
 
 type BridgeRequest = {
   type?: unknown;
@@ -68,14 +68,14 @@ window.addEventListener('message', async (event: MessageEvent) => {
   }
 
   if (data.type === 'getDIDKey') {
-    const key = getSigningKey();
+    const key = getActiveKey();
     postReply(event, { type: 'getDIDKey:result', requestId, ok: Boolean(key?.didKey), didKey: key?.didKey ?? null });
     return;
   }
 
   if (data.type === 'signMessage') {
     try {
-      const key = getSigningKey();
+      const key = getActiveKey();
       if (!key?.privateKey) {
         postReply(event, { type: 'signMessage:result', requestId, ok: false, error: 'no_local_key' });
         return;

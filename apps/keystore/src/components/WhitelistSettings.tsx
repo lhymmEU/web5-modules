@@ -54,8 +54,9 @@ export function WhitelistSettings() {
             onChange={(e) => setNewOrigin(e.target.value)}
             placeholder="Add new origin (e.g. http://localhost:8080)"
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            style={{ flex: 1, minWidth: '300px', padding: '0.75rem' }}
           />
-          <button onClick={handleAdd} className="btn-primary">
+          <button onClick={handleAdd} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Plus size={18} /> Add
           </button>
         </div>

@@ -1,6 +1,6 @@
 // Based on https://github.com/web5fans/web5fans.github.io/blob/ccc-sdk/src/utils/storage.ts
 
-export const STORAGE_KEY_SIGNING_KEY = 'web5_keystore_signing_key';
+export const STORAGE_KEY_STATE = 'web5_keystore_state';
 export const STORAGE_KEY_WHITELIST = 'web5_keystore_origin_whitelist';
 
 export const DEFAULT_WHITELIST = [
@@ -14,20 +14,87 @@ export interface SigningKeyData {
   createdAt: number;
 }
 
-export const saveSigningKey = (keyData: SigningKeyData): void => {
-  localStorage.setItem(STORAGE_KEY_SIGNING_KEY, JSON.stringify(keyData));
-};
-
-export const getSigningKey = (): SigningKeyData | null => {
-  const data = localStorage.getItem(STORAGE_KEY_SIGNING_KEY);
-  return data ? JSON.parse(data) : null;
-};
-
-export const deleteSigningKey = (): void => {
-    localStorage.removeItem(STORAGE_KEY_SIGNING_KEY);
+export interface KeyEntry extends SigningKeyData {
+  id: string; // uuid or did
+  alias: string;
 }
 
-// Whitelist Management
+export interface KeyStoreState {
+  keys: KeyEntry[];
+  activeKeyId: string | null;
+}
+
+// Internal helper
+const getState = (): KeyStoreState => {
+  const data = localStorage.getItem(STORAGE_KEY_STATE);
+  if (!data) return { keys: [], activeKeyId: null };
+  try {
+    return JSON.parse(data);
+  } catch {
+    return { keys: [], activeKeyId: null };
+  }
+};
+
+const saveState = (state: KeyStoreState) => {
+  localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(state));
+};
+
+// API
+export const getAllKeys = (): KeyEntry[] => {
+  return getState().keys;
+};
+
+export const getActiveKey = (): KeyEntry | null => {
+  const state = getState();
+  if (!state.activeKeyId) return null;
+  return state.keys.find(k => k.id === state.activeKeyId) || null;
+};
+
+export const addKey = (keyData: SigningKeyData, alias: string): KeyEntry => {
+  const state = getState();
+  const newKey: KeyEntry = {
+    ...keyData,
+    id: crypto.randomUUID(),
+    alias: alias || `Key ${state.keys.length + 1}`
+  };
+  
+  state.keys.push(newKey);
+  
+  // Auto-activate if it's the first key
+  if (state.keys.length === 1) {
+    state.activeKeyId = newKey.id;
+  }
+  
+  saveState(state);
+  return newKey;
+};
+
+export const deleteKey = (id: string): void => {
+  const state = getState();
+  state.keys = state.keys.filter(k => k.id !== id);
+  
+  // If we deleted the active key, unset activeKeyId or switch to another?
+  // Let's unset it to be safe, user must manually select another.
+  if (state.activeKeyId === id) {
+    state.activeKeyId = null;
+    // Optional: auto-select next available
+    if (state.keys.length > 0) {
+      state.activeKeyId = state.keys[0].id;
+    }
+  }
+  
+  saveState(state);
+};
+
+export const setActiveKey = (id: string): void => {
+  const state = getState();
+  if (state.keys.some(k => k.id === id)) {
+    state.activeKeyId = id;
+    saveState(state);
+  }
+};
+
+// Whitelist Management (unchanged)
 export const getStoredWhitelist = (): string[] => {
   const data = localStorage.getItem(STORAGE_KEY_WHITELIST);
   return data ? JSON.parse(data) : [];

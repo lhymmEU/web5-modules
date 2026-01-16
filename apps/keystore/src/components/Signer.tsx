@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { bytesToHex, hexToBytes, signMessage, verifySignature } from '../utils/crypto';
-import { getSigningKey } from '../utils/storage';
+import { getActiveKey } from '../utils/storage';
 
 export function Signer() {
   const [message, setMessage] = useState('');
@@ -11,20 +11,20 @@ export function Signer() {
   const [error, setError] = useState<string | null>(null);
 
   const [verifyMessage, setVerifyMessage] = useState('');
-  const [verifyDidKey, setVerifyDidKey] = useState(() => getSigningKey()?.didKey ?? '');
+  const [verifyDidKey, setVerifyDidKey] = useState(() => getActiveKey()?.didKey ?? '');
   const [verifySignatureHex, setVerifySignatureHex] = useState('');
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [verifyResult, setVerifyResult] = useState<null | { ok: boolean; text: string }>(null);
 
-  const localKey = getSigningKey();
-  const hasKey = Boolean(localKey?.privateKey);
+  const activeKey = getActiveKey();
+  const hasKey = Boolean(activeKey?.privateKey);
 
   const onSign = async () => {
     if (!hasKey) return;
     setBusy(true);
     setError(null);
     try {
-      const currentKey = getSigningKey();
+      const currentKey = getActiveKey();
       if (!currentKey?.privateKey) {
         setError('Local private key not found. Please create or import a key first.');
         return;
@@ -112,7 +112,7 @@ export function Signer() {
 
       <div style={{ marginTop: '1.5rem' }}>
         <div className="label">Verify Signature</div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Verify signature using did:key.</div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Verify signature using active did:key.</div>
       </div>
 
       <div style={{ marginTop: '1rem' }}>
