@@ -79,8 +79,8 @@ graph TD
 
 ### 3.4 Console (Demo Host)
 *   **功能实现**:
-    *   **注册/登录**: 调用 `KeystoreClient.connect()` 获取用户 DID。
-    *   **DID 管理**: 使用 `DID Module` 的 API 查询当前 DID 文档，展示在页面上。
+    *   **密钥管理**: 调用 `KeystoreClient.connect()` 获取用户 DID Key，以及签名，验签等操作。
+    *   **DID 管理**: 展示 DID的创建和管理（transfer/update/destroy）操作。
     *   **数据读写**: 提供一个简单的表单（如“记事本”），调用 `PDS Module` 将数据写入用户的 DWN/PDS，并读取列表展示。
 
 ## 4. 目录结构 (Monorepo)
