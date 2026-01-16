@@ -3,11 +3,11 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 import { useKeystore } from './contexts/KeystoreContext';
-import { Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff, Key } from 'lucide-react';
 
 export function Layout() {
   const location = useLocation();
-  const { connected } = useKeystore();
+  const { connected, didKey } = useKeystore();
 
   return (
     <div className="container">
@@ -22,9 +22,17 @@ export function Layout() {
           <h1>Web5 Console</h1>
         </div>
         
-        <div className={`connection-badge ${connected ? 'connected' : 'disconnected'}`}>
-          {connected ? <Wifi size={18} /> : <WifiOff size={18} />}
-          <span>{connected ? 'Keystore Connected' : 'Keystore Disconnected'}</span>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {didKey && (
+            <div className="did-badge" title={didKey}>
+              <Key size={16} />
+              <span>{didKey.slice(0, 12)}...{didKey.slice(-6)}</span>
+            </div>
+          )}
+          <div className={`connection-badge ${connected ? 'connected' : 'disconnected'}`}>
+            {connected ? <Wifi size={18} /> : <WifiOff size={18} />}
+            <span>{connected ? 'Connected' : 'Disconnected'}</span>
+          </div>
         </div>
       </div>
       
@@ -85,6 +93,18 @@ export function Layout() {
           color: #991b1b;
           border: 1px solid #fecaca;
         }
+        .did-badge {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background-color: #f1f5f9;
+          color: #475569;
+          border: 1px solid #e2e8f0;
+          border-radius: 999px;
+          font-size: 0.8rem;
+          font-family: monospace;
+        }
         .nav-bar {
           display: flex;
           gap: 1rem;
@@ -119,4 +139,5 @@ export function Layout() {
     </div>
   );
 }
+
 

@@ -5,6 +5,7 @@ import { KeystoreClient } from '../utils/KeystoreClient';
 interface KeystoreContextType {
   client: KeystoreClient | null;
   connected: boolean;
+  didKey: string | null;
   logs: string[];
   addLog: (msg: string) => void;
 }
@@ -14,6 +15,7 @@ const KeystoreContext = createContext<KeystoreContextType | null>(null);
 export function KeystoreProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<KeystoreClient | null>(null);
   const [connected, setConnected] = useState(false);
+  const [didKey, setDidKey] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
   const addLog = (msg: string) => {
@@ -29,10 +31,21 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     c.connect()
-      .then(() => {
+      .then(async () => {
         if (isMounted) {
           setConnected(true);
           addLog('Connected to Keystore Bridge (Global)');
+          
+          // Auto-fetch DID on connect
+          try {
+            const didKey = await c.getDIDKey();
+            if (isMounted && didKey) {
+              setDidKey(didKey);
+              addLog(`DID Loaded: ${didKey}`);
+            }
+          } catch (e: any) {
+            addLog(`Failed to fetch DID on connect: ${e.message}`);
+          }
         }
       })
       .catch((err) => {
@@ -45,12 +58,13 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       c.disconnect();
       setConnected(false);
+      setDidKey(null);
       addLog('Global Client disconnected');
     };
   }, []);
 
   return (
-    <KeystoreContext.Provider value={{ client, connected, logs, addLog }}>
+    <KeystoreContext.Provider value={{ client, connected, didKey, logs, addLog }}>
       {children}
     </KeystoreContext.Provider>
   );
