@@ -41,6 +41,12 @@ export function Layout() {
         >
           Key Manager
         </Link>
+        <Link 
+          to="/dids" 
+          className={`nav-link ${location.pathname === '/dids' ? 'active' : ''}`}
+        >
+          DID Manager
+        </Link>
       </nav>
 
       <div className="content-area">
