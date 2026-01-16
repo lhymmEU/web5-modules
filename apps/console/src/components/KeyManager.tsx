@@ -1,109 +1,116 @@
-
-import { useState, useEffect } from 'react';
-import { KeystoreClient } from '../utils/KeystoreClient';
+import { useState } from 'react';
+import { useKeystore } from '../contexts/KeystoreContext';
+import { Check, AlertCircle } from 'lucide-react';
 import './KeyManager.css';
 
 export function KeyManager() {
-  const [client, setClient] = useState<KeystoreClient | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
+  const { client, connected } = useKeystore();
   
-  // Test inputs
+  // States for operation results
+  const [pingStatus, setPingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [pingResult, setPingResult] = useState('');
+
+  const [didStatus, setDidStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [didResult, setDidResult] = useState('');
+
+  const [signStatus, setSignStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [signMsg, setSignMsg] = useState('Hello Web5');
+  const [signResult, setSignResult] = useState('');
+
+  const [verifyStatus, setVerifyStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [verifyDid, setVerifyDid] = useState('');
   const [verifyMsg, setVerifyMsg] = useState('Hello Web5');
   const [verifySig, setVerifySig] = useState('');
-
-  const addLog = (msg: string) => {
-    setLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
-  };
-
-  useEffect(() => {
-    const c = new KeystoreClient('http://localhost:3001/bridge.html');
-    setClient(c);
-    addLog('Client initialized, connecting...');
-
-    let isMounted = true;
-
-    c.connect()
-      .then(() => {
-        if (isMounted) {
-          setConnected(true);
-          addLog('Connected to Keystore Bridge');
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          addLog(`Connection failed: ${err.message}`);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-      c.disconnect();
-      setConnected(false);
-    };
-  }, []);
+  const [verifyResult, setVerifyResult] = useState('');
 
   const handlePing = async () => {
     if (!client) return;
+    setPingStatus('loading');
     try {
-      addLog('Sending PING...');
       const duration = await client.ping();
-      addLog(`PONG received in ${duration.toFixed(2)}ms`);
+      setPingResult(`PONG in ${duration.toFixed(2)}ms`);
+      setPingStatus('success');
     } catch (e: any) {
-      addLog(`Ping failed: ${e.message}`);
+      setPingResult(e.message);
+      setPingStatus('error');
     }
   };
 
   const handleGetDID = async () => {
     if (!client) return;
+    setDidStatus('loading');
     try {
-      addLog('Requesting DID Key...');
       const did = await client.getDIDKey();
-      addLog(`DID Key: ${did || 'null (Not created in Keystore yet)'}`);
-      if (did) setVerifyDid(did);
+      if (did) {
+        setDidResult(did);
+        setVerifyDid(did);
+        setDidStatus('success');
+      } else {
+        setDidResult('No DID returned (Key not created?)');
+        setDidStatus('error');
+      }
     } catch (e: any) {
-      addLog(`GetDIDKey failed: ${e.message}`);
+      setDidResult(e.message);
+      setDidStatus('error');
     }
   };
 
   const handleSign = async () => {
     if (!client) return;
+    setSignStatus('loading');
     try {
-      addLog(`Signing message: "${signMsg}"...`);
       const sig = await client.signMessage(signMsg);
-      addLog(`Signature: ${sig}`);
+      setSignResult(sig);
       setVerifySig(sig);
+      setSignStatus('success');
     } catch (e: any) {
-      addLog(`Sign failed: ${e.message}`);
+      setSignResult(e.message);
+      setSignStatus('error');
     }
   };
 
   const handleVerify = async () => {
     if (!client) return;
+    setVerifyStatus('loading');
     try {
-      addLog(`Verifying... DID=${verifyDid.slice(0, 15)}...`);
       const isValid = await client.verifySignature(verifyDid, verifyMsg, verifySig);
-      addLog(`Verification Result: ${isValid ? 'VALID' : 'INVALID'}`);
+      setVerifyResult(isValid ? 'Signature Valid' : 'Signature Invalid');
+      setVerifyStatus(isValid ? 'success' : 'error');
     } catch (e: any) {
-      addLog(`Verification Result: INVALID or Error (${e.message})`);
+      setVerifyResult(e.message);
+      setVerifyStatus('error');
     }
+  };
+
+  const renderStatus = (status: string, result: string) => {
+    if (status === 'idle') return null;
+    if (status === 'loading') return <div className="result-loading">Processing...</div>;
+    return (
+      <div className={`result-box ${status}`}>
+        {status === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+        <span className="result-text">{result}</span>
+      </div>
+    );
   };
 
   return (
     <div className="key-manager-container">
-      <h2>Keystore Connection</h2>
-      
-      <div className={`status ${connected ? 'connected' : 'disconnected'}`}>
-        Status: {connected ? 'Connected' : 'Disconnected'}
-      </div>
-
       <div className="km-card">
         <h3>Basic Actions</h3>
-        <div className="km-actions">
-          <button onClick={handlePing} disabled={!connected}>Ping</button>
-          <button onClick={handleGetDID} disabled={!connected}>Get DID Key</button>
+        <div className="km-actions-row">
+          <div className="action-item">
+            <button onClick={handlePing} disabled={!connected || pingStatus === 'loading'}>
+              Ping Bridge
+            </button>
+            {renderStatus(pingStatus, pingResult)}
+          </div>
+          
+          <div className="action-item">
+            <button onClick={handleGetDID} disabled={!connected || didStatus === 'loading'}>
+              Get DID Key
+            </button>
+            {renderStatus(didStatus, didResult)}
+          </div>
         </div>
       </div>
 
@@ -115,8 +122,11 @@ export function KeyManager() {
             onChange={(e) => setSignMsg(e.target.value)} 
             placeholder="Message to sign"
           />
-          <button onClick={handleSign} disabled={!connected}>Sign</button>
+          <button onClick={handleSign} disabled={!connected || signStatus === 'loading'}>
+            {signStatus === 'loading' ? 'Signing...' : 'Sign'}
+          </button>
         </div>
+        {renderStatus(signStatus, signResult)}
       </div>
 
       <div className="km-card">
@@ -137,16 +147,49 @@ export function KeyManager() {
             onChange={(e) => setVerifySig(e.target.value)} 
             placeholder="Signature Hex"
           />
-          <button onClick={handleVerify} disabled={!connected}>Verify</button>
+          <button onClick={handleVerify} disabled={!connected || verifyStatus === 'loading'}>
+            {verifyStatus === 'loading' ? 'Verifying...' : 'Verify'}
+          </button>
         </div>
+        {renderStatus(verifyStatus, verifyResult)}
       </div>
 
-      <div className="km-logs">
-        <h3>Logs</h3>
-        <div className="km-log-window">
-          {logs.map((log, i) => <div key={i} className="km-log-entry">{log}</div>)}
-        </div>
-      </div>
+      <style>{`
+        .km-actions-row {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .action-item {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        .result-box {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.85rem;
+          word-break: break-all;
+        }
+        .result-box.success {
+          background-color: #f0fdf4;
+          color: #166534;
+          border: 1px solid #bbf7d0;
+        }
+        .result-box.error {
+          background-color: #fef2f2;
+          color: #991b1b;
+          border: 1px solid #fecaca;
+        }
+        .result-loading {
+          color: #64748b;
+          font-style: italic;
+          font-size: 0.85rem;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,25 +1,21 @@
 
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
+import { Routes, Route } from 'react-router-dom';
 import './App.css';
-import { KeyManager } from './components/KeyManager';
+import { Layout } from './Layout';
+import { HomePage } from './pages/HomePage';
+import { KeyManagerPage } from './pages/KeyManagerPage';
+import { KeystoreProvider } from './contexts/KeystoreContext';
 
 function App() {
   return (
-    <div className="container">
-      <div className="header-logos">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Web5 Console</h1>
-
-      <KeyManager />
-    </div>
+    <KeystoreProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="keys" element={<KeyManagerPage />} />
+        </Route>
+      </Routes>
+    </KeystoreProvider>
   );
 }
 
