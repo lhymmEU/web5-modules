@@ -1,5 +1,6 @@
 
 import { Routes, Route } from 'react-router-dom';
+import { ccc } from '@ckb-ccc/connector-react';
 import './App.css';
 import { Layout } from './Layout';
 import { HomePage } from './pages/HomePage';
@@ -9,15 +10,17 @@ import { KeystoreProvider } from './contexts/KeystoreContext';
 
 function App() {
   return (
-    <KeystoreProvider>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<HomePage />} />
-          <Route path="keys" element={<KeyManagerPage />} />
-          <Route path="dids" element={<DidManagerPage />} />
-        </Route>
-      </Routes>
-    </KeystoreProvider>
+    <ccc.Provider>
+      <KeystoreProvider>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="keys" element={<KeyManagerPage />} />
+            <Route path="dids" element={<DidManagerPage />} />
+          </Route>
+        </Routes>
+      </KeystoreProvider>
+    </ccc.Provider>
   );
 }
 
