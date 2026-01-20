@@ -60,7 +60,7 @@ export function KeyManager() {
     if (!client) return;
     setSignStatus('loading');
     try {
-      const sig = await client.signMessage(new TextEncoder().encode(signMsg));
+      const sig = await client.signMessage(bytesFrom(signMsg, 'utf8'));
       setSignResult(hexFrom(sig));
       setVerifySig(hexFrom(sig));
       setSignStatus('success');
@@ -74,7 +74,7 @@ export function KeyManager() {
     if (!client) return;
     setVerifyStatus('loading');
     try {
-      const isValid = await client.verifySignature(verifyDid, new TextEncoder().encode(verifyMsg), bytesFrom(verifySig));
+      const isValid = await client.verifySignature(verifyDid, bytesFrom(verifyMsg, 'utf8'), bytesFrom(verifySig));
       setVerifyResult(isValid ? 'Signature Valid' : 'Signature Invalid');
       setVerifyStatus(isValid ? 'success' : 'error');
     } catch (e: unknown) {

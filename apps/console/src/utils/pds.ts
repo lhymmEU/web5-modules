@@ -2,7 +2,7 @@ import { AtpAgent, FansWeb5CkbPreCreateAccount } from "web5-api";
 import type { UnsignedCommit } from "@atproto/repo";
 import { CID } from "multiformats";
 import * as cbor from "@ipld/dag-cbor";
-import { bytesFrom, hexFrom } from "@ckb-ccc/connector-react";
+import { bytesFrom, bytesTo, hexFrom } from "@ckb-ccc/connector-react";
 
 export function checkUsernameFormat(username: string): boolean {
   // username will be domain so it must follow the rules of domain name
@@ -138,7 +138,7 @@ export async function pdsPreDeleteAccount(did: string, ckbAddr: string, pdsAPIUr
       ckbAddr,
       index: preDelectIndex,
     })
-  
+    console.log('pre delete account params', preDelete);
     return bytesFrom(preDelete.data.message, 'utf8');
   } catch (e: unknown) {
     console.error(e);
@@ -153,9 +153,11 @@ export async function pdsDeleteAccount(did: string, ckbAddr: string, didKey: str
       $type: 'fans.web5.ckb.indexAction#deleteAccount',
     }
 
+    const deleteMessageStr = bytesTo(deleteMessage, 'utf8');
+    console.log('delete message str', deleteMessageStr);
     const deleteInfo = await agent.fans.web5.ckb.indexAction({
       did,
-      message: hexFrom(deleteMessage),
+      message: deleteMessageStr,
       signingKey: didKey,
       signedBytes: hexFrom(sig),
       ckbAddr,

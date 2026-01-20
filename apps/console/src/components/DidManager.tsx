@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { Fingerprint, Wallet, Loader, FileJson, Send, Hammer, RefreshCw, Trash2, ArrowRight, Edit, Search, CheckCircle, XCircle } from 'lucide-react';
 import { ccc } from '@ckb-ccc/connector-react';
-import { bytesFrom } from '@ckb-ccc/core';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { 
   buildCreateTransaction, 
@@ -14,7 +13,7 @@ import {
   updateDidKey,
   updateAka
 } from '../utils/didCKB';
-import { checkUsernameAvailability, checkUsernameFormat, pdsPreCreateAccount, buildPreCreateSignData, pdsCreateAccount, type userInfo } from '../utils/pds';
+import { checkUsernameAvailability, checkUsernameFormat, pdsPreCreateAccount, buildPreCreateSignData, pdsCreateAccount, type userInfo, pdsPreDeleteAccount, pdsDeleteAccount } from '../utils/pds';
 
 function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, processing }: {
   item: didCkbCellInfo;
@@ -282,6 +281,56 @@ export function DidManager() {
   const [txHash, setTxHash] = useState<string>('');
   const [sendError, setSendError] = useState<string>('');
 
+  // PDS Delete States
+  const [deletePdsDid, setDeletePdsDid] = useState('');
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDeletePdsAccount = async () => {
+    if (!deletePdsDid || !address || !didKey || !pdsAddress) {
+      setDeleteError('Missing required info (DID to delete, CKB Address, DID Key, or PDS Address)');
+      setDeleteStatus('error');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this PDS account? This action cannot be undone.')) return;
+
+    setDeleteStatus('processing');
+    setDeleteError('');
+
+    try {
+      // 1. Pre-delete (get message to sign)
+      const messageToSign = await pdsPreDeleteAccount(deletePdsDid, address, pdsAddress);
+      if (!messageToSign) {
+        throw new Error('Failed to prepare delete account');
+      }
+
+      // 2. Sign with Keystore
+      if (!client) {
+        throw new Error('Keystore client not connected');
+      }
+
+      const sig = await client.signMessage(messageToSign);
+      
+      if (!sig) {
+        throw new Error('Failed to sign message');
+      }
+
+      // 3. Delete account
+      const success = await pdsDeleteAccount(deletePdsDid, address, didKey, pdsAddress, messageToSign, sig);
+      
+      if (success) {
+        setDeleteStatus('success');
+        setDeletePdsDid(''); // Clear input on success
+      } else {
+        throw new Error('Failed to delete PDS account');
+      }
+    } catch (e: unknown) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
+      setDeleteStatus('error');
+    }
+  };
+
   // PDS Registration States
   const [registerStatus, setRegisterStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [registerError, setRegisterError] = useState('');
@@ -316,9 +365,7 @@ export function DidManager() {
         throw new Error('Keystore client not connected');
       }
       
-      const sig = await client.signMessage(
-        bytesFrom(signData)
-      );
+      const sig = await client.signMessage(signData);
       
       if (!sig) {
         throw new Error('Failed to sign message');
@@ -773,6 +820,52 @@ export function DidManager() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Delete DID Section */}
+      {wallet && (
+        <div style={{ padding: '1rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626' }}>
+            <Trash2 size={18} />
+            Delete PDS Account
+          </h3>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500, color: '#475569' }}>DID to Delete</div>
+            <input 
+              className="input" 
+              placeholder="did:ckb:..." 
+              value={deletePdsDid}
+              onChange={(e) => setDeletePdsDid(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <button 
+            className="btn btn-danger"
+            onClick={handleDeletePdsAccount}
+            disabled={deleteStatus === 'processing' || !deletePdsDid || !didKey}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {deleteStatus === 'processing' ? <Loader size={16} className="spin" /> : <Trash2 size={16} />}
+            Delete PDS Account
+          </button>
+
+          {deleteStatus === 'error' && (
+            <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem' }}>
+              Deletion failed: {deleteError}
+            </div>
+          )}
+
+          {deleteStatus === 'success' && (
+            <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: '0.875rem' }}>
+              <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                <CheckCircle size={16} /> PDS Account Deleted Successfully!
+              </div>
+              <div>Please proceed to "My DIDs" section below to destroy the corresponding DID Cell on CKB.</div>
             </div>
           )}
         </div>
