@@ -55,6 +55,12 @@ export function Layout() {
         >
           DID Manager
         </Link>
+        <Link 
+          to="/pds" 
+          className={`nav-link ${location.pathname === '/pds' ? 'active' : ''}`}
+        >
+          PDS Manager
+        </Link>
       </nav>
 
       <div className="content-area">

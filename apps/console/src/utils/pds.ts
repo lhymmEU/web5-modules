@@ -1,4 +1,4 @@
-import { AtpAgent, FansWeb5CkbPreCreateAccount } from "web5-api";
+import { AtpAgent, FansWeb5CkbIndexAction, FansWeb5CkbPreCreateAccount } from "web5-api";
 import type { UnsignedCommit } from "@atproto/repo";
 import { CID } from "multiformats";
 import * as cbor from "@ipld/dag-cbor";
@@ -77,7 +77,7 @@ export function buildPreCreateSignData(preCreateResult: FansWeb5CkbPreCreateAcco
   // const sig = await keyPair.sign(encoded)
 }
 
-export interface userInfo {
+export type userInfo = {
     accessJwt: string;
     refreshJwt: string;
     handle: string;
@@ -130,7 +130,7 @@ export async function pdsPreDeleteAccount(did: string, ckbAddr: string, pdsAPIUr
   try {
     const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
     const preDelectIndex = {
-      $type: 'fans.web5.ckb.preIndexAction#deleteAccount',
+      $type: 'fans.web5.ckb.preIndexAction#deleteAccount' as const,
     }
   
     const preDelete = await agent.fans.web5.ckb.preIndexAction({
@@ -150,7 +150,7 @@ export async function pdsDeleteAccount(did: string, ckbAddr: string, didKey: str
   try {
     const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
     const deleteIndex = {
-      $type: 'fans.web5.ckb.indexAction#deleteAccount',
+      $type: 'fans.web5.ckb.indexAction#deleteAccount' as const,
     }
 
     const deleteMessageStr = bytesTo(deleteMessage, 'utf8');
@@ -170,6 +170,69 @@ export async function pdsDeleteAccount(did: string, ckbAddr: string, didKey: str
     }
   } catch (e: unknown) {
     console.error(e);
+    return null;
+  }
+}
+
+export async function pdsPreLogin(did: string, pdsAPIUrl: string, ckbAddr: string): Promise<Uint8Array | null> {
+  const preLoginIndex = {
+    $type: 'fans.web5.ckb.preIndexAction#createSession' as const,
+  }
+
+  try {
+    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+    const preLogin = await agent.fans.web5.ckb.preIndexAction({
+      did,
+      ckbAddr,
+      index: preLoginIndex,
+    })
+    return bytesFrom(preLogin.data.message, 'utf8');
+  } catch (err: unknown) {
+    console.error(err);
+    return null;
+  }
+}
+
+export type sessionInfo = {
+  accessJwt: string;
+  refreshJwt: string;
+  handle: string;
+  did: string;
+  didMetadata: string;
+}
+
+export async function pdsLogin(did: string, pdsAPIUrl: string, didKey: string, ckbAddr: string, preLoginMessage: Uint8Array, sig: Uint8Array): Promise<sessionInfo | null> {
+  const loginIndex = {
+    $type: 'fans.web5.ckb.indexAction#createSession' as const,
+  }
+
+  try {
+    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+
+    const loginInfo = await agent.web5Login({
+      did,
+      message: bytesTo(preLoginMessage, 'utf8'),
+      signingKey: didKey,
+      signedBytes: hexFrom(sig),
+      ckbAddr,
+      index: loginIndex,
+    })
+    if (loginInfo.success) {
+      const loginInfoData = loginInfo.data.result as FansWeb5CkbIndexAction.CreateSessionResult
+      const sessionInfo: sessionInfo = {
+        accessJwt: loginInfoData.accessJwt,
+        refreshJwt: loginInfoData.refreshJwt,
+        handle: loginInfoData.handle,
+        did: loginInfoData.did,
+        didMetadata: JSON.stringify(loginInfoData.didDoc),
+      }
+      console.log('session info', sessionInfo);
+      return sessionInfo;
+    } else {
+      return null;
+    }
+  } catch (err: unknown) {
+    console.error(err);
     return null;
   }
 }
