@@ -452,7 +452,52 @@ export function DidManager() {
 
   const handleDestroy = async (didArgs: string) => {
     if (!signer) return;
-    if (!confirm('Are you sure you want to destroy this DID? This action cannot be undone.')) return;
+    
+    // Find metadata for this DID
+    const didItem = didList.find(item => item.args === didArgs);
+    if (didItem) {
+      try {
+        const metadata = JSON.parse(didItem.didMetadata);
+        if (metadata.alsoKnownAs && metadata.alsoKnownAs.length > 0) {
+          const aka = metadata.alsoKnownAs[0];
+          if (aka.startsWith('at://')) {
+            const handle = aka.replace('at://', '');
+            // Simple parsing to extract username and pds
+            const parts = handle.split('.');
+            if (parts.length >= 3) { // username.pds.domain
+              const username = parts[0];
+              const pdsAddress = parts.slice(1).join('.');
+              
+              // Check availability
+              setProcessingId(didArgs); // Show loading state
+              try {
+                const available = await checkUsernameAvailability(username, pdsAddress);
+                // If available is false (taken), or error (null), we might want to warn
+                // But the requirement says "If still in use then prompt user".
+                // checkUsernameAvailability returns false if taken (in use).
+                
+                if (available === false) {
+                   if (!confirm(`The handle "${handle}" seems to be still in use (registered on PDS). Are you sure you want to destroy the DID Cell? It is recommended to delete the PDS account first.`)) {
+                     setProcessingId(null);
+                     return;
+                   }
+                }
+              } catch (e) {
+                // Ignore check errors, proceed to confirmation
+                console.warn('Failed to check username availability before destroy', e);
+              }
+            }
+          }
+        }
+      } catch {
+        // Ignore metadata parse errors
+      }
+    }
+
+    if (!confirm('Are you sure you want to destroy this DID? This action cannot be undone.')) {
+      setProcessingId(null);
+      return;
+    }
     
     setProcessingId(didArgs);
     setActionStatus(null);
