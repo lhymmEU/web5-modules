@@ -1,7 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { Fingerprint, Wallet, Loader, FileJson, Send, Hammer, RefreshCw, Trash2, ArrowRight, Edit } from 'lucide-react';
+import { Fingerprint, Wallet, Loader, FileJson, Send, Hammer, RefreshCw, Trash2, ArrowRight, Edit, Search, CheckCircle, XCircle } from 'lucide-react';
 import { ccc } from '@ckb-ccc/connector-react';
+import { bytesFrom } from '@ckb-ccc/core';
+import { useKeystore } from '../contexts/KeystoreContext';
 import { 
   buildCreateTransaction, 
   sendCkbTransaction, 
@@ -12,6 +14,7 @@ import {
   updateDidKey,
   updateAka
 } from '../utils/didCKB';
+import { checkUsernameAvailability, checkUsernameFormat, pdsPreCreateAccount, buildPreCreateSignData, pdsCreateAccount, type userInfo } from '../utils/pds';
 
 function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, processing }: {
   item: didCkbCellInfo;
@@ -30,9 +33,12 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
   useEffect(() => {
     try {
       const doc = JSON.parse(item.didMetadata);
-      if (doc.verificationMethods?.atproto) setNewKey(doc.verificationMethods.atproto);
-      if (doc.alsoKnownAs) setNewAka(JSON.stringify(doc.alsoKnownAs));
-    } catch (e) {
+      if (doc.verificationMethods?.atproto) {
+        // Defer setState to avoid cascading renders
+        queueMicrotask(() => setNewKey(doc.verificationMethods.atproto));
+      }
+      if (doc.alsoKnownAs) queueMicrotask(() => setNewAka(JSON.stringify(doc.alsoKnownAs)));
+    } catch {
       // ignore
     }
   }, [item.didMetadata]);
@@ -150,6 +156,7 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
 export function DidManager() {
   const { wallet, open, disconnect } = ccc.useCcc();
   const signer = ccc.useSigner();
+  const { didKey, client } = useKeystore();
   
   const [address, setAddress] = useState<string>('');
   const [balance, setBalance] = useState<string>('');
@@ -162,6 +169,47 @@ export function DidManager() {
   // Action States
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // PDS Pre-registration States
+  const [pdsAddress, setPdsAddress] = useState('');
+  const [pdsUsername, setPdsUsername] = useState('');
+  const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
+  const [checkMessage, setCheckMessage] = useState('');
+
+  const handleCheckUsername = async () => {
+    if (!pdsAddress || !pdsUsername) {
+      setCheckStatus('error');
+      setCheckMessage('Please enter both PDS Address and Username');
+      return;
+    }
+
+    if (!checkUsernameFormat(pdsUsername)) {
+      setCheckStatus('error');
+      setCheckMessage('Invalid username format. Must be 4-18 characters, start with a letter, contain only lowercase letters, numbers, and hyphens (-), and end with a letter or number.');
+      return;
+    }
+
+    setCheckStatus('checking');
+    setCheckMessage('');
+
+    try {
+      const available = await checkUsernameAvailability(pdsUsername, pdsAddress);
+      
+      if (available === false) {
+        setCheckStatus('taken');
+        setCheckMessage('Username is already taken');
+      } else if (available === true) {
+        setCheckStatus('available');
+        setCheckMessage('Username is available');
+      } else {
+        setCheckStatus('error');
+        setCheckMessage('Unknown response from PDS');
+      }
+    } catch (e: unknown) {
+      setCheckStatus('error');
+      setCheckMessage(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   // DID Creation States
   const [metadata, setMetadata] = useState(JSON.stringify({
@@ -176,6 +224,54 @@ export function DidManager() {
       atproto: "did:key:zQ3shvzLcx2TeGmV33sPsVieaXWdjYwAcGXfiVgSyfhe6JdHh" 
     }
   }, null, 2));
+
+  // Auto-update metadata when PDS info changes
+  useEffect(() => {
+    try {
+      const current = JSON.parse(metadata);
+      let changed = false;
+
+      // Determine new values
+      const handle = pdsUsername && pdsAddress ? `${pdsUsername}.${pdsAddress}` : 'alice.example.com';
+      let endpoint = pdsAddress ? pdsAddress : 'https://pds.example.com';
+      if (endpoint !== 'https://pds.example.com' && !endpoint.startsWith('http')) {
+        endpoint = `https://${endpoint}`;
+      }
+
+      // Update Endpoint
+      if (!current.services) current.services = {};
+      if (!current.services.atproto_pds) current.services.atproto_pds = { type: "AtprotoPersonalDataServer" };
+      
+      if (current.services.atproto_pds.endpoint !== endpoint) {
+        current.services.atproto_pds.endpoint = endpoint;
+        changed = true;
+      }
+
+      // Update Handle (alsoKnownAs)
+      const newAka = `at://${handle}`;
+      if (!current.alsoKnownAs || !Array.isArray(current.alsoKnownAs)) {
+        current.alsoKnownAs = [newAka];
+        changed = true;
+      } else if (current.alsoKnownAs[0] !== newAka) {
+        current.alsoKnownAs[0] = newAka;
+        changed = true;
+      }
+
+      // Update Verification Method (didKey)
+      const newDidKey = didKey || "did:key:zQ3shvzLcx2TeGmV33sPsVieaXWdjYwAcGXfiVgSyfhe6JdHh";
+      if (!current.verificationMethods) current.verificationMethods = {};
+      if (current.verificationMethods.atproto !== newDidKey) {
+        current.verificationMethods.atproto = newDidKey;
+        changed = true;
+      }
+
+      if (changed) {
+        setMetadata(JSON.stringify(current, null, 2));
+      }
+    } catch {
+      // Ignore parse errors while user is editing manually
+    }
+  }, [pdsAddress, pdsUsername, didKey, metadata]);
   
   const [buildStatus, setBuildStatus] = useState<'idle' | 'building' | 'success' | 'error'>('idle');
   const [rawTx, setRawTx] = useState<string>('');
@@ -185,6 +281,65 @@ export function DidManager() {
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [txHash, setTxHash] = useState<string>('');
   const [sendError, setSendError] = useState<string>('');
+
+  // PDS Registration States
+  const [registerStatus, setRegisterStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [registerError, setRegisterError] = useState('');
+  const [registeredUserInfo, setRegisteredUserInfo] = useState<userInfo | null>(null);
+
+  const handleRegisterPds = async () => {
+    if (!generatedDid || !didKey || !pdsUsername || !pdsAddress || !address) {
+      setRegisterError('Missing required information (DID, DID Key, Username, PDS Address, or CKB Address)');
+      setRegisterStatus('error');
+      return;
+    }
+
+    setRegisterStatus('processing');
+    setRegisterError('');
+    setRegisteredUserInfo(null);
+
+    try {
+      // 1. Pre-create account
+      const preCreateResult = await pdsPreCreateAccount(pdsUsername, pdsAddress, didKey, generatedDid);
+      if (!preCreateResult) {
+        throw new Error('Failed to pre-create PDS account');
+      }
+
+      // 2. Build sign data
+      const signData = buildPreCreateSignData(preCreateResult);
+      if (!signData) {
+        throw new Error('Failed to build sign data');
+      }
+
+      // 3. Sign with Keystore
+      if (!client) {
+        throw new Error('Keystore client not connected');
+      }
+      
+      const sig = await client.signMessage(
+        bytesFrom(signData)
+      );
+      
+      if (!sig) {
+        throw new Error('Failed to sign message');
+      }
+
+      // 4. Create account
+      const userInfo = await pdsCreateAccount(preCreateResult, sig, pdsUsername, pdsAddress, didKey, address);
+      
+      if (userInfo) {
+        setRegisteredUserInfo(userInfo);
+        setRegisterStatus('success');
+      } else {
+        throw new Error('Failed to create PDS account');
+      }
+    } catch (e: unknown) {
+      setRegisterError(e instanceof Error ? e.message : String(e));
+      setRegisterStatus('error');
+    }
+  };
+
+
 
   useEffect(() => {
     if (!signer) {
@@ -241,8 +396,8 @@ export function DidManager() {
       } else {
         setActionStatus({ type: 'error', message: 'Transfer failed' });
       }
-    } catch (e: any) {
-      setActionStatus({ type: 'error', message: e.message || 'Transfer failed' });
+    } catch (e: unknown) {
+      setActionStatus({ type: 'error', message: e instanceof Error ? e.message : String(e) || 'Transfer failed' });
     } finally {
       setProcessingId(null);
     }
@@ -262,8 +417,8 @@ export function DidManager() {
       } else {
         setActionStatus({ type: 'error', message: 'Destroy failed' });
       }
-    } catch (e: any) {
-      setActionStatus({ type: 'error', message: e.message || 'Destroy failed' });
+    } catch (e: unknown) {
+      setActionStatus({ type: 'error', message: e instanceof Error ? e.message : String(e) || 'Destroy failed' });
     } finally {
       setProcessingId(null);
     }
@@ -281,8 +436,8 @@ export function DidManager() {
       } else {
         setActionStatus({ type: 'error', message: 'Update Key failed' });
       }
-    } catch (e: any) {
-      setActionStatus({ type: 'error', message: e.message || 'Update Key failed' });
+    } catch (e: unknown) {
+      setActionStatus({ type: 'error', message: e instanceof Error ? e.message : String(e) || 'Update Key failed' });
     } finally {
       setProcessingId(null);
     }
@@ -300,8 +455,8 @@ export function DidManager() {
       } else {
         setActionStatus({ type: 'error', message: 'Update AKA failed' });
       }
-    } catch (e: any) {
-      setActionStatus({ type: 'error', message: e.message || 'Update AKA failed' });
+    } catch (e: unknown) {
+      setActionStatus({ type: 'error', message: e instanceof Error ? e.message : String(e) || 'Update AKA failed' });
     } finally {
       setProcessingId(null);
     }
@@ -319,8 +474,8 @@ export function DidManager() {
       setRawTx(rawTx);
       setGeneratedDid(did);
       setBuildStatus('success');
-    } catch (e: any) {
-      setBuildError(e.message || 'Failed to build transaction');
+    } catch (e: unknown) {
+      setBuildError(e instanceof Error ? e.message : String(e) || 'Failed to build transaction');
       setBuildStatus('error');
     }
   };
@@ -339,8 +494,8 @@ export function DidManager() {
       const hash = await sendCkbTransaction(signer, txObj);
       setTxHash(hash);
       setSendStatus('success');
-    } catch (e: any) {
-      setSendError(e.message || 'Failed to send transaction');
+    } catch (e: unknown) {
+      setSendError(e instanceof Error ? e.message : String(e) || 'Failed to send transaction');
       setSendStatus('error');
     }
   };
@@ -365,6 +520,65 @@ export function DidManager() {
           <h2 style={{ margin: 0, fontSize: '1.25rem' }}>DID Manager</h2>
           <div style={{ color: '#64748b', fontSize: '0.875rem' }}>Manage your Decentralized Identifiers</div>
         </div>
+      </div>
+
+      {/* Pre-register PDS Account Section */}
+      <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+          <Search size={18} />
+          Register PDS Account (Check Username)
+        </h3>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>PDS Address</label>
+            <input 
+              className="input" 
+              placeholder="e.g. pds.example.com" 
+              value={pdsAddress}
+              onChange={(e) => setPdsAddress(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>Username</label>
+            <input 
+              className="input" 
+              placeholder="e.g. alice" 
+              value={pdsUsername}
+              onChange={(e) => setPdsUsername(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+
+        <button 
+          className="btn btn-primary"
+          onClick={handleCheckUsername}
+          disabled={checkStatus === 'checking' || !pdsAddress || !pdsUsername}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          {checkStatus === 'checking' ? <Loader size={16} className="spin" /> : <Search size={16} />}
+          Check Username
+        </button>
+
+        {checkStatus !== 'idle' && checkStatus !== 'checking' && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem', 
+            borderRadius: '6px', 
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: checkStatus === 'available' ? '#f0fdf4' : '#fef2f2',
+            color: checkStatus === 'available' ? '#15803d' : '#991b1b',
+            border: `1px solid ${checkStatus === 'available' ? '#bbf7d0' : '#fecaca'}`
+          }}>
+            {checkStatus === 'available' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+            {checkMessage}
+          </div>
+        )}
       </div>
 
       {/* CKB Wallet Connection Section */}
@@ -486,34 +700,79 @@ export function DidManager() {
                   {(() => {
                     try {
                       return JSON.stringify(JSON.parse(rawTx), null, 2);
-                    } catch (e) {
-                      return rawTx;
+                    } catch (e: unknown) {
+                      return e instanceof Error ? e.message : String(e) || rawTx;
                     }
                   })()}
                 </div>
               </div>
 
-              <button 
-                className="btn btn-success"
-                onClick={handleSendTx}
-                disabled={sendStatus === 'sending'}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                {sendStatus === 'sending' ? <Loader size={16} className="spin" /> : <Send size={16} />}
-                Send Transaction
-              </button>
-
-              {sendStatus === 'error' && (
-                <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem' }}>
-                  Send failed: {sendError}
+              <div style={{ marginBottom: '1rem', borderBottom: '1px solid #cbd5e1', paddingBottom: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: 600, color: '#dc2626' }}>Step 1:</span> Register your PDS account first. This ensures your handle is reserved.
                 </div>
-              )}
+                <button 
+                  className="btn btn-secondary"
+                  onClick={handleRegisterPds}
+                  disabled={registerStatus === 'processing' || !generatedDid || !didKey}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}
+                >
+                  {registerStatus === 'processing' ? <Loader size={16} className="spin" /> : <Search size={16} />}
+                  Register PDS Account
+                </button>
 
-              {sendStatus === 'success' && (
-                <div style={{ marginTop: '0.75rem', color: '#16a34a', fontSize: '0.875rem', fontWeight: 600 }}>
-                  Transaction Sent! Hash: {txHash}
+                {registerStatus === 'error' && (
+                  <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem' }}>
+                    Registration failed: {registerError}
+                  </div>
+                )}
+
+                {registerStatus === 'success' && registeredUserInfo && (
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                    <div style={{ color: '#16a34a', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <CheckCircle size={16} /> Registration Successful!
+                    </div>
+                    <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#334155' }}>
+                      <div style={{ marginBottom: '0.25rem' }}><strong>Handle:</strong> {registeredUserInfo.handle}</div>
+                      <div style={{ marginBottom: '0.25rem' }}><strong>DID:</strong> {registeredUserInfo.did}</div>
+                      <details>
+                        <summary style={{ cursor: 'pointer', color: '#64748b' }}>Show Tokens</summary>
+                        <div style={{ marginTop: '0.25rem', wordBreak: 'break-all' }}>
+                          <div style={{ marginBottom: '0.25rem' }}><strong>Access JWT:</strong> {registeredUserInfo.accessJwt}</div>
+                          <div><strong>Refresh JWT:</strong> {registeredUserInfo.refreshJwt}</div>
+                        </div>
+                      </details>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: 600, color: '#dc2626' }}>Step 2:</span> Send the transaction to CKB to register your DID.
                 </div>
-              )}
+                <button 
+                  className="btn btn-success"
+                  onClick={handleSendTx}
+                  disabled={sendStatus === 'sending'}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  {sendStatus === 'sending' ? <Loader size={16} className="spin" /> : <Send size={16} />}
+                  Send Transaction
+                </button>
+
+                {sendStatus === 'error' && (
+                  <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem' }}>
+                    Send failed: {sendError}
+                  </div>
+                )}
+
+                {sendStatus === 'success' && (
+                  <div style={{ marginTop: '0.75rem', color: '#16a34a', fontSize: '0.875rem', fontWeight: 600 }}>
+                    Transaction Sent! Hash: {txHash}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

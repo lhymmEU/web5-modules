@@ -1,42 +1,21 @@
-import { bytesToHex, hexToBytes, signMessage, verifySignature } from './utils/crypto';
+import { signMessage, verifySignature } from './utils/crypto';
 import { getActiveKey, isOriginAllowed } from './utils/storage';
 
 type BridgeRequest = {
-  type?: unknown;
-  requestId?: unknown;
-  message?: unknown;
-  messageHex?: unknown;
-  messageBase64?: unknown;
-  didKey?: unknown;
-  signatureHex?: unknown;
-  signatureBase64?: unknown;
+  type: string;
+  requestId: string;
+  message?: Uint8Array;
+  didKey?: string;
+  signature?: Uint8Array;
 };
 
-const base64ToBytes = (s: string): Uint8Array => {
-  const binary = atob(s);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-};
-
-const bytesToBase64 = (bytes: Uint8Array): string => {
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s);
-};
-
-const getMessageBytes = (data: BridgeRequest): Uint8Array => {
-  if (typeof data.messageHex === 'string' && data.messageHex.trim()) return hexToBytes(data.messageHex.trim());
-  if (typeof data.messageBase64 === 'string' && data.messageBase64.trim()) return base64ToBytes(data.messageBase64.trim());
-  if (typeof data.message === 'string') return new TextEncoder().encode(data.message);
-  return new Uint8Array();
-};
-
-const getSignatureBytes = (data: BridgeRequest): Uint8Array => {
-  if (typeof data.signatureHex === 'string' && data.signatureHex.trim()) return hexToBytes(data.signatureHex.trim());
-  if (typeof data.signatureBase64 === 'string' && data.signatureBase64.trim()) return base64ToBytes(data.signatureBase64.trim());
-  return new Uint8Array();
-};
+type BridgeResponse = {
+  type: string;
+  requestId: string;
+  ok: boolean;
+  error?: string;
+  [key: string]: unknown;
+}
 
 const postReply = (event: MessageEvent, payload: unknown) => {
   const target = event.source as WindowProxy | null;
@@ -61,15 +40,26 @@ window.addEventListener('message', async (event: MessageEvent) => {
   // console.log('[Bridge] Received:', data.type, data);
 
   const requestId = typeof data.requestId === 'string' ? data.requestId : undefined;
+  if (!requestId) {
+    console.warn('[Bridge] Missing requestId');
+    return;
+  }
 
   if (data.type === 'PING') {
-    postReply(event, { type: 'PONG', requestId });
+    const res: BridgeResponse = { type: 'PONG', requestId, ok: true };
+    postReply(event, res);
     return;
   }
 
   if (data.type === 'getDIDKey') {
     const key = getActiveKey();
-    postReply(event, { type: 'getDIDKey:result', requestId, ok: Boolean(key?.didKey), didKey: key?.didKey ?? null });
+    if (!key?.didKey) {
+      const res: BridgeResponse = { type: 'getDIDKey:result', requestId, ok: false, error: 'no_active_key' };
+      postReply(event, res);
+      return;
+    }
+    const res: BridgeResponse = { type: 'getDIDKey:result', requestId, ok: true, didKey: key?.didKey };
+    postReply(event, res);
     return;
   }
 
@@ -77,45 +67,52 @@ window.addEventListener('message', async (event: MessageEvent) => {
     try {
       const key = getActiveKey();
       if (!key?.privateKey) {
-        postReply(event, { type: 'signMessage:result', requestId, ok: false, error: 'no_local_key' });
+        const res: BridgeResponse = { type: 'signMessage:result', requestId, ok: false, error: 'no_local_key' };
+        postReply(event, res);
         return;
       }
-      const msgBytes = getMessageBytes(data);
-      if (msgBytes.length === 0) {
-        postReply(event, { type: 'signMessage:result', requestId, ok: false, error: 'empty_message' });
+      const msgBytes = data.message as Uint8Array | undefined;
+      if (!msgBytes) {
+        const res: BridgeResponse = { type: 'signMessage:result', requestId, ok: false, error: 'empty_message' };
+        postReply(event, res);
         return;
       }
       const sigBytes = await signMessage(msgBytes, key.privateKey);
-      postReply(event, {
+      const res: BridgeResponse = {
         type: 'signMessage:result',
         requestId,
         ok: true,
-        signatureHex: bytesToHex(sigBytes),
-        signatureBase64: bytesToBase64(sigBytes),
-      });
+        signature: sigBytes,
+      };
+      postReply(event, res);
     } catch {
-      postReply(event, { type: 'signMessage:result', requestId, ok: false, error: 'sign_failed' });
+      const res: BridgeResponse = { type: 'signMessage:result', requestId, ok: false, error: 'sign_failed' };
+      postReply(event, res);
     }
     return;
   }
 
   if (data.type === 'verifySignature') {
     try {
-      const didKey = typeof data.didKey === 'string' ? data.didKey.trim() : '';
+      const didKey = typeof data.didKey === 'string' ? data.didKey.trim() : undefined;
       if (!didKey) {
-        postReply(event, { type: 'verifySignature:result', requestId, ok: false, error: 'missing_didKey' });
+        const res: BridgeResponse = { type: 'verifySignature:result', requestId, ok: false, error: 'missing_didKey' };
+        postReply(event, res);
         return;
       }
-      const msgBytes = getMessageBytes(data);
-      const sigBytes = getSignatureBytes(data);
-      if (msgBytes.length === 0 || sigBytes.length === 0) {
-        postReply(event, { type: 'verifySignature:result', requestId, ok: false, error: 'missing_payload' });
+      const msgBytes = data.message as Uint8Array | undefined;
+      const sigBytes = data.signature as Uint8Array | undefined;
+      if (!msgBytes || !sigBytes) {
+        const res: BridgeResponse = { type: 'verifySignature:result', requestId, ok: false, error: 'missing_payload' };
+        postReply(event, res);
         return;
       }
-      const ok = await verifySignature(msgBytes, sigBytes, didKey);
-      postReply(event, { type: 'verifySignature:result', requestId, ok });
+      const verified = await verifySignature(msgBytes, sigBytes, didKey);
+      const res: BridgeResponse = { type: 'verifySignature:result', requestId, ok: true, verified };
+      postReply(event, res);
     } catch {
-      postReply(event, { type: 'verifySignature:result', requestId, ok: false, error: 'verify_failed' });
+      const res: BridgeResponse = { type: 'verifySignature:result', requestId, ok: false, error: 'verify_failed' };
+      postReply(event, res);
     }
   }
 });

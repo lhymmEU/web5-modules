@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { Check, AlertCircle } from 'lucide-react';
+import { bytesFrom, hexFrom } from '@ckb-ccc/core';
 import './KeyManager.css';
 
 export function KeyManager() {
@@ -30,8 +31,8 @@ export function KeyManager() {
       const duration = await client.ping();
       setPingResult(`PONG in ${duration.toFixed(2)}ms`);
       setPingStatus('success');
-    } catch (e: any) {
-      setPingResult(e.message);
+    } catch (e: unknown) {
+      setPingResult(e instanceof Error ? e.message : String(e));
       setPingStatus('error');
     }
   };
@@ -49,8 +50,8 @@ export function KeyManager() {
         setDidResult('No DID returned (Key not created?)');
         setDidStatus('error');
       }
-    } catch (e: any) {
-      setDidResult(e.message);
+    } catch (e: unknown) {
+      setDidResult(e instanceof Error ? e.message : String(e));
       setDidStatus('error');
     }
   };
@@ -59,12 +60,12 @@ export function KeyManager() {
     if (!client) return;
     setSignStatus('loading');
     try {
-      const sig = await client.signMessage(signMsg);
-      setSignResult(sig);
-      setVerifySig(sig);
+      const sig = await client.signMessage(new TextEncoder().encode(signMsg));
+      setSignResult(hexFrom(sig));
+      setVerifySig(hexFrom(sig));
       setSignStatus('success');
-    } catch (e: any) {
-      setSignResult(e.message);
+    } catch (e: unknown) {
+      setSignResult(e instanceof Error ? e.message : String(e));
       setSignStatus('error');
     }
   };
@@ -73,11 +74,11 @@ export function KeyManager() {
     if (!client) return;
     setVerifyStatus('loading');
     try {
-      const isValid = await client.verifySignature(verifyDid, verifyMsg, verifySig);
+      const isValid = await client.verifySignature(verifyDid, new TextEncoder().encode(verifyMsg), bytesFrom(verifySig));
       setVerifyResult(isValid ? 'Signature Valid' : 'Signature Invalid');
       setVerifyStatus(isValid ? 'success' : 'error');
-    } catch (e: any) {
-      setVerifyResult(e.message);
+    } catch (e: unknown) {
+      setVerifyResult(e instanceof Error ? e.message : String(e));
       setVerifyStatus('error');
     }
   };

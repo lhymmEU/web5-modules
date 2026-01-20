@@ -1,16 +1,25 @@
+export type BridgeRequest = {
+  type: string;
+  requestId: string;
+  message?: Uint8Array;
+  didKey?: string;
+  signature?: Uint8Array;
+};
 
-export interface BridgeResponse {
+export type BridgeResponse = {
   type: string;
   requestId: string;
   ok: boolean;
   error?: string;
-  [key: string]: unknown;
+  didKey?: string;
+  verified?: boolean;
+  signature?: Uint8Array;
 }
 
 export class KeystoreClient {
   private iframe: HTMLIFrameElement | null = null;
   private bridgeUrl: string;
-  private pendingRequests = new Map<string, { resolve: (val: any) => void; reject: (err: Error) => void }>();
+  private pendingRequests = new Map<string, { resolve: (val: BridgeResponse) => void; reject: (err: Error) => void }>();
 
   constructor(bridgeUrl: string = 'http://localhost:3001/bridge.html') {
     this.bridgeUrl = bridgeUrl;
@@ -34,7 +43,7 @@ export class KeystoreClient {
 
       window.addEventListener('message', this.handleMessage);
 
-      let loadTimeout = setTimeout(() => {
+      const loadTimeout = setTimeout(() => {
         reject(new Error('Iframe load timeout (5s)'));
       }, 5000);
 
@@ -99,27 +108,25 @@ export class KeystoreClient {
     }
   };
 
-  private request<T>(type: string, payload: Record<string, unknown> = {}): Promise<T> {
+  private request<T>(message: BridgeRequest): Promise<T> {
     if (!this.iframe || !this.iframe.contentWindow) {
       return Promise.reject(new Error('Bridge not connected'));
     }
 
-    const requestId = crypto.randomUUID();
-    const message = {
-      type,
-      requestId,
-      ...payload,
-    };
+    const requestId = message.requestId;
 
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(requestId, { resolve, reject });
+      this.pendingRequests.set(requestId, { 
+        resolve: (val: BridgeResponse) => resolve(val as T), 
+        reject 
+      });
       this.iframe!.contentWindow!.postMessage(message, '*'); // targetOrigin should be specific in prod
       
       // Timeout after 30s
       setTimeout(() => {
         if (this.pendingRequests.has(requestId)) {
           this.pendingRequests.delete(requestId);
-          reject(new Error(`Request ${type} timed out`));
+          reject(new Error(`Request ${message.type} timed out`));
         }
       }, 30000);
     });
@@ -127,34 +134,62 @@ export class KeystoreClient {
 
   public async ping(): Promise<number> {
     const start = performance.now();
-    await this.request('PING');
+    const res = await this.request<BridgeResponse>({
+      type: 'PING',
+      requestId: crypto.randomUUID(),
+    });
+    if (!res.ok) {
+      throw new Error('Ping failed');
+    }
+    if (res.type !== 'PONG') {
+      throw new Error('Invalid response type for PING');
+    }
     return performance.now() - start;
   }
 
   public async getDIDKey(): Promise<string> {
-    const res = await this.request<{ didKey: string }>('getDIDKey');
+    const res = await this.request<BridgeResponse>({
+      type: 'getDIDKey',
+      requestId: crypto.randomUUID(),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to get DID key');
+    }
+    if (typeof res.didKey !== 'string') {
+      throw new Error('Invalid DID key format');
+    }
     return res.didKey;
   }
 
-  public async signMessage(message: string): Promise<string> {
-    const res = await this.request<{ signatureHex: string }>('signMessage', { message });
-    return res.signatureHex;
+  public async signMessage(message: Uint8Array): Promise<Uint8Array> {
+    const res = await this.request<BridgeResponse>({
+      type: 'signMessage',
+      requestId: crypto.randomUUID(),
+      message,
+    });
+    if (!res.ok) {
+      throw new Error('Failed to sign message');
+    }
+    if (!res.signature || !(res.signature instanceof Uint8Array)) {
+      throw new Error('Invalid signature format');
+    }
+    return res.signature;
   }
 
-  public async verifySignature(didKey: string, message: string, signatureHex: string): Promise<boolean> {
-    const res = await this.request<{ ok: boolean }>('verifySignature', {
+  public async verifySignature(didKey: string, message: Uint8Array, signature: Uint8Array): Promise<boolean> {
+    const res = await this.request<BridgeResponse>({
+      type: 'verifySignature',
+      requestId: crypto.randomUUID(),
       didKey,
       message,
-      signatureHex,
+      signature,
     });
-    return res.ok; // Note: 'ok' in response body means request success, but for verifySignature logic we might need to check inner field if defined differently. 
-    // Based on previous bridge implementation: { ok: true/false } is the verification result for verifySignature? 
-    // Wait, usually 'ok' in bridge response means "protocol success". 
-    // Let's check bridge.ts implementation assumption:
-    // If bridge.ts returns { ok: true } for valid signature and { ok: false, error: '...' } for invalid? 
-    // Or { ok: true, isValid: boolean }?
-    // Let's assume bridge returns { ok: true } on success (meaning signature valid) or throws error if invalid?
-    // Re-reading bridge logic (implied): usually verify returns boolean.
-    // If bridge.ts implementation was: setResponse({ ok: result }) -> then here res.ok is the result.
+    if (!res.ok) {
+      throw new Error('Failed to verify signature');
+    }
+    if (typeof res.verified !== 'boolean') {
+      throw new Error('Invalid verification result format');
+    }
+    return res.verified;
   }
 }
