@@ -1,3 +1,5 @@
+import { KEY_STORE_BRIDGE_URL } from "../constants/keystore";
+
 export type BridgeRequest = {
   type: string;
   requestId: string;
@@ -21,7 +23,7 @@ export class KeystoreClient {
   private bridgeUrl: string;
   private pendingRequests = new Map<string, { resolve: (val: BridgeResponse) => void; reject: (err: Error) => void }>();
 
-  constructor(bridgeUrl: string = 'http://localhost:3001/bridge.html') {
+  constructor(bridgeUrl: string = KEY_STORE_BRIDGE_URL) {
     this.bridgeUrl = bridgeUrl;
   }
 

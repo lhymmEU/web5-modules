@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Fingerprint, Wallet, Loader, FileJson, Send, Hammer, RefreshCw, Trash2, ArrowRight, Edit, Search, CheckCircle, XCircle } from 'lucide-react';
+import { Fingerprint, Loader, FileJson, Send, Hammer, RefreshCw, Trash2, ArrowRight, Edit, Search, CheckCircle } from 'lucide-react';
 import { ccc } from '@ckb-ccc/connector-react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { 
@@ -14,6 +14,8 @@ import {
   updateAka
 } from '../utils/didCKB';
 import { checkUsernameAvailability, checkUsernameFormat, pdsPreCreateAccount, buildPreCreateSignData, pdsCreateAccount, type userInfo, pdsPreDeleteAccount, pdsDeleteAccount } from '../utils/pds';
+
+import { usePds } from '../contexts/PdsContext';
 
 function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, processing }: {
   item: didCkbCellInfo;
@@ -153,13 +155,12 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
 }
 
 export function DidManager() {
-  const { wallet, open, disconnect } = ccc.useCcc();
+  const { wallet } = ccc.useCcc();
   const signer = ccc.useSigner();
   const { didKey, client } = useKeystore();
+  const { pdsUrl: pdsAddress } = usePds();
   
   const [address, setAddress] = useState<string>('');
-  const [balance, setBalance] = useState<string>('');
-  const [loadingInfo, setLoadingInfo] = useState(false);
 
   // DID List State
   const [didList, setDidList] = useState<didCkbCellInfo[]>([]);
@@ -170,7 +171,6 @@ export function DidManager() {
   const [actionStatus, setActionStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // PDS Pre-registration States
-  const [pdsAddress, setPdsAddress] = useState('');
   const [pdsUsername, setPdsUsername] = useState('');
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const [checkMessage, setCheckMessage] = useState('');
@@ -178,7 +178,7 @@ export function DidManager() {
   const handleCheckUsername = async () => {
     if (!pdsAddress || !pdsUsername) {
       setCheckStatus('error');
-      setCheckMessage('Please enter both PDS Address and Username');
+      setCheckMessage('Please enter Username');
       return;
     }
 
@@ -391,25 +391,15 @@ export function DidManager() {
   useEffect(() => {
     if (!signer) {
       setAddress('');
-      setBalance('');
       return;
     }
 
     const fetchInfo = async () => {
-      setLoadingInfo(true);
       try {
         const addr = await signer.getRecommendedAddress();
         setAddress(addr);
-        
-        // getBalance returns Shannons (BigInt)
-        const bal = await signer.getBalance();
-        // Convert Shannons to CKB (1 CKB = 10^8 Shannons)
-        const ckb = (Number(bal) / 100_000_000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
-        setBalance(ckb);
       } catch (e) {
         console.error('Failed to fetch signer info:', e);
-      } finally {
-        setLoadingInfo(false);
       }
     };
 
@@ -592,11 +582,6 @@ export function DidManager() {
     }
   };
 
-  const formatAddress = (addr: string) => {
-    if (!addr || addr.length < 20) return addr;
-    return `${addr.slice(0, 10)}...${addr.slice(-10)}`;
-  };
-
   return (
     <div className="card">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -614,117 +599,11 @@ export function DidManager() {
         </div>
       </div>
 
-      {/* Pre-register PDS Account Section */}
-      <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
-          <Search size={18} />
-          Register PDS Account (Check Username)
-        </h3>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>PDS Address</label>
-            <input 
-              className="input" 
-              placeholder="e.g. pds.example.com" 
-              value={pdsAddress}
-              onChange={(e) => setPdsAddress(e.target.value)}
-              style={{ width: '100%' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>Username</label>
-            <input 
-              className="input" 
-              placeholder="e.g. alice" 
-              value={pdsUsername}
-              onChange={(e) => setPdsUsername(e.target.value)}
-              style={{ width: '100%' }}
-            />
-          </div>
+      {!wallet && (
+        <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', marginBottom: '2rem' }}>
+           <div style={{ marginBottom: '1rem', color: '#64748b' }}>Please connect your CKB wallet in the header to proceed.</div>
         </div>
-
-        <button 
-          className="btn btn-primary"
-          onClick={handleCheckUsername}
-          disabled={checkStatus === 'checking' || !pdsAddress || !pdsUsername}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          {checkStatus === 'checking' ? <Loader size={16} className="spin" /> : <Search size={16} />}
-          Check Username
-        </button>
-
-        {checkStatus !== 'idle' && checkStatus !== 'checking' && (
-          <div style={{ 
-            marginTop: '1rem', 
-            padding: '0.75rem', 
-            borderRadius: '6px', 
-            fontSize: '0.875rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            background: checkStatus === 'available' ? '#f0fdf4' : '#fef2f2',
-            color: checkStatus === 'available' ? '#15803d' : '#991b1b',
-            border: `1px solid ${checkStatus === 'available' ? '#bbf7d0' : '#fecaca'}`
-          }}>
-            {checkStatus === 'available' ? <CheckCircle size={16} /> : <XCircle size={16} />}
-            {checkMessage}
-          </div>
-        )}
-      </div>
-
-      {/* CKB Wallet Connection Section */}
-      <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
-          <Wallet size={18} />
-          CKB Wallet
-        </h3>
-        
-        {!wallet ? (
-          <button 
-            className="btn btn-primary"
-            onClick={open}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            <Wallet size={16} /> Connect Wallet
-          </button>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.5rem 1rem', fontSize: '0.875rem' }}>
-              <div style={{ color: '#64748b', fontWeight: 500 }}>Address:</div>
-              <div 
-                style={{ fontFamily: 'monospace', color: '#334155', cursor: 'pointer' }} 
-                title={address}
-                onClick={() => {
-                  navigator.clipboard.writeText(address);
-                }}
-              >
-                {loadingInfo ? <Loader size={14} className="spin" /> : formatAddress(address)}
-              </div>
-              
-              <div style={{ color: '#64748b', fontWeight: 500 }}>Balance:</div>
-              <div style={{ fontWeight: 600, color: '#0f172a' }}>
-                {loadingInfo ? <Loader size={14} className="spin" /> : `${balance} CKB`}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button 
-                    className="btn btn-secondary"
-                    onClick={open}
-                >
-                    Wallet Settings
-                </button>
-                <button 
-                    className="btn btn-danger"
-                    onClick={disconnect}
-                >
-                    Disconnect
-                </button>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Create DID Section */}
       {wallet && (
@@ -733,6 +612,62 @@ export function DidManager() {
             <FileJson size={18} />
             Create DID
           </h3>
+
+          <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '0.875rem', marginBottom: '0.75rem', fontWeight: 600, color: '#475569' }}>
+              PDS Account Info (Pre-registration)
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>PDS Address</label>
+                <div style={{ 
+                  background: '#f1f5f9', 
+                  padding: '0.5rem 0.75rem', 
+                  borderRadius: '6px', 
+                  border: '1px solid #e2e8f0', 
+                  color: '#475569', 
+                  fontSize: '0.875rem' 
+                }}>
+                  {pdsAddress}
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Desired Username</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    className="input" 
+                    placeholder="alice" 
+                    value={pdsUsername}
+                    onChange={(e) => setPdsUsername(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={handleCheckUsername}
+                    disabled={checkStatus === 'checking' || !pdsUsername || !pdsAddress}
+                    title="Check Availability"
+                  >
+                    {checkStatus === 'checking' ? <Loader size={14} className="spin" /> : <Search size={14} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {checkMessage && (
+               <div style={{ 
+                 marginTop: '0.5rem', 
+                 fontSize: '0.75rem', 
+                 color: checkStatus === 'available' ? '#16a34a' : checkStatus === 'taken' || checkStatus === 'error' ? '#dc2626' : '#64748b',
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '0.25rem'
+               }}>
+                 {checkStatus === 'available' && <CheckCircle size={12} />}
+                 {checkMessage}
+               </div>
+            )}
+          </div>
 
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#475569' }}>DID Metadata (JSON)</div>
@@ -827,13 +762,22 @@ export function DidManager() {
                     <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#334155' }}>
                       <div style={{ marginBottom: '0.25rem' }}><strong>Handle:</strong> {registeredUserInfo.handle}</div>
                       <div style={{ marginBottom: '0.25rem' }}><strong>DID:</strong> {registeredUserInfo.did}</div>
-                      <details>
-                        <summary style={{ cursor: 'pointer', color: '#64748b' }}>Show Tokens</summary>
-                        <div style={{ marginTop: '0.25rem', wordBreak: 'break-all' }}>
-                          <div style={{ marginBottom: '0.25rem' }}><strong>Access JWT:</strong> {registeredUserInfo.accessJwt}</div>
-                          <div><strong>Refresh JWT:</strong> {registeredUserInfo.refreshJwt}</div>
-                        </div>
-                      </details>
+
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <details>
+                          <summary style={{ cursor: 'pointer', color: '#64748b' }}>Show Tokens</summary>
+                          <div style={{ marginTop: '0.25rem', wordBreak: 'break-all' }}>
+                            <div style={{ marginBottom: '0.25rem' }}>
+                              <div style={{ fontWeight: 600, color: '#475569', marginBottom: '0.1rem' }}>Access JWT:</div>
+                              <div style={{ background: '#f1f5f9', padding: '0.25rem', borderRadius: '2px', color: '#64748b' }}>{registeredUserInfo.accessJwt}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, color: '#475569', marginBottom: '0.1rem' }}>Refresh JWT:</div>
+                              <div style={{ background: '#f1f5f9', padding: '0.25rem', borderRadius: '2px', color: '#64748b' }}>{registeredUserInfo.refreshJwt}</div>
+                            </div>
+                          </div>
+                        </details>
+                      </div>
                     </div>
                   </div>
                 )}

@@ -83,8 +83,6 @@ export type userInfo = {
     handle: string;
     /** The DID of the new account. */
     did: string;
-    /** Complete DID Metadata. */
-    didMetadata: string;
 }
 
 export async function pdsCreateAccount(preCreateResult: FansWeb5CkbPreCreateAccount.OutputSchema, sig: Uint8Array, username: string, pdsAPIUrl: string, didKey: string, ckbAddr: string) : Promise<userInfo | null> {
@@ -105,8 +103,6 @@ export async function pdsCreateAccount(preCreateResult: FansWeb5CkbPreCreateAcco
     },
   }
 
-  console.log('create account params', params);
-
   const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
   const createRes = await agent.web5CreateAccount(params)
   if (createRes.success) {
@@ -115,8 +111,7 @@ export async function pdsCreateAccount(preCreateResult: FansWeb5CkbPreCreateAcco
       accessJwt: createRes.data.accessJwt,
       refreshJwt: createRes.data.refreshJwt,
       handle: createRes.data.handle,
-      did: createRes.data.did,
-      didMetadata: createRes.data.didDoc?.toString() ?? '',
+      did: createRes.data.did
     }
     return userInfo;
   } else {
@@ -226,7 +221,6 @@ export async function pdsLogin(did: string, pdsAPIUrl: string, didKey: string, c
         did: loginInfoData.did,
         didMetadata: JSON.stringify(loginInfoData.didDoc),
       }
-      console.log('session info', sessionInfo);
       return sessionInfo;
     } else {
       return null;

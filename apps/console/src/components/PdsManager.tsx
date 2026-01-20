@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Server, Loader, LogIn, AlertTriangle, Shield, User } from 'lucide-react';
 import { useKeystore } from '../contexts/KeystoreContext';
+import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
 import { pdsPreLogin, pdsLogin, type sessionInfo } from '../utils/pds';
 
@@ -8,12 +9,12 @@ export function PdsManager() {
   const { wallet, open } = ccc.useCcc();
   const signer = ccc.useSigner();
   const { connected, didKey, client } = useKeystore();
+  const { pdsUrl } = usePds();
   
   // CKB Address State
   const [address, setAddress] = useState<string>('');
   
   // Login States
-  const [pdsUrl, setPdsUrl] = useState('pds.example.com');
   const [did, setDid] = useState('');
   const [loginStatus, setLoginStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [loginError, setLoginError] = useState('');
@@ -122,13 +123,16 @@ export function PdsManager() {
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>PDS URL</label>
-            <input 
-              className="input" 
-              placeholder="pds.example.com" 
-              value={pdsUrl}
-              onChange={(e) => setPdsUrl(e.target.value)}
-              style={{ width: '100%' }}
-            />
+            <div style={{ 
+              background: '#f1f5f9', 
+              padding: '0.5rem 0.75rem', 
+              borderRadius: '6px', 
+              border: '1px solid #e2e8f0', 
+              color: '#475569', 
+              fontSize: '0.875rem' 
+            }}>
+              {pdsUrl}
+            </div>
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
