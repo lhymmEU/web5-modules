@@ -13,7 +13,7 @@ import {
   updateDidKey,
   updateAka
 } from '../utils/didCKB';
-import { checkUsernameAvailability, checkUsernameFormat, pdsPreCreateAccount, buildPreCreateSignData, pdsCreateAccount, type userInfo, pdsPreDeleteAccount, pdsDeleteAccount } from '../utils/pds';
+import { getDidByUsername, checkUsernameFormat, pdsPreCreateAccount, buildPreCreateSignData, pdsCreateAccount, type userInfo, pdsPreDeleteAccount, pdsDeleteAccount } from '../utils/pds';
 
 import { usePds } from '../contexts/PdsContext';
 
@@ -184,7 +184,7 @@ export function DidManager() {
 
     if (!checkUsernameFormat(pdsUsername)) {
       setCheckStatus('error');
-      setCheckMessage('Invalid username format. Must be 4-18 characters, start with a letter, contain only lowercase letters, numbers, and hyphens (-), and end with a letter or number.');
+      setCheckMessage('Invalid username format. Must be 4-18 characters, start with a letter, contain only letters, numbers, and hyphens (-), and end with a letter or number.');
       return;
     }
 
@@ -192,14 +192,14 @@ export function DidManager() {
     setCheckMessage('');
 
     try {
-      const available = await checkUsernameAvailability(pdsUsername, pdsAddress);
+      const did = await getDidByUsername(pdsUsername, pdsAddress);
       
-      if (available === false) {
+      if (did && did !== '') {
         setCheckStatus('taken');
-        setCheckMessage('Username is already taken');
-      } else if (available === true) {
+        setCheckMessage('Username is already taken. DID: ${did}');
+      } else if (did === '') {
         setCheckStatus('available');
-        setCheckMessage('Username is available');
+        setCheckMessage(`Username is available.`);
       } else {
         setCheckStatus('error');
         setCheckMessage('Unknown response from PDS');
@@ -461,16 +461,19 @@ export function DidManager() {
               // Check availability
               setProcessingId(didArgs); // Show loading state
               try {
-                const available = await checkUsernameAvailability(username, pdsAddress);
-                // If available is false (taken), or error (null), we might want to warn
-                // But the requirement says "If still in use then prompt user".
-                // checkUsernameAvailability returns false if taken (in use).
-                
-                if (available === false) {
-                   if (!confirm(`The handle "${handle}" seems to be still in use (registered on PDS). Are you sure you want to destroy the DID Cell? It is recommended to delete the PDS account first.`)) {
+                const did = await getDidByUsername(username, pdsAddress);
+                // did is null means pds return error
+                if (!did) {
+                   if (!confirm(`The handle "${handle}" maybe still in use (registered on PDS). Are you sure you want to destroy the DID Cell? It is recommended to delete the PDS account first.`)) {
                      setProcessingId(null);
                      return;
                    }
+                } else if (did !== '') {
+                  // did is '' means username is not taken
+                  if (!confirm(`The handle "${handle}" still in use (registered on PDS). Are you sure you want to destroy the DID Cell? It is recommended to delete the PDS account first.`)) {
+                    setProcessingId(null);
+                    return;
+                  }
                 }
               } catch (e) {
                 // Ignore check errors, proceed to confirmation

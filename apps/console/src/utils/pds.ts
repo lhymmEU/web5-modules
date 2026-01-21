@@ -6,28 +6,29 @@ import { bytesFrom, bytesTo, hexFrom } from "@ckb-ccc/connector-react";
 
 export function checkUsernameFormat(username: string): boolean {
   // username will be domain so it must follow the rules of domain name
-  // it must start with a lowercase letter
-  // it can only contain lowercase letters, numbers, and hyphens
-  // it must end with a lowercase letter or number
+  // it must start with a letter
+  // it can only contain letters, numbers, and hyphens
+  // it must end with a letter or number
   // it must be between 4 and 18 characters long
   if (username.length < 4 || username.length > 18) {
     return false;
   }
-  const usernameRegex = /^[a-z][a-z0-9-]*[a-z0-9]$/;
+  const usernameRegex = /^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]$/;
   return usernameRegex.test(username);
 }
 
-export async function checkUsernameAvailability(username: string, pdsAPIUrl: string): Promise<boolean | null> {
+export async function getDidByUsername(username: string, pdsAPIUrl: string): Promise<string | null> {
   try {
+
     const handle = `${username.toLowerCase()}.${pdsAPIUrl}`;
     const url = `https://${handle}/.well-known/atproto-did`;
     const response = await fetch(url);
     const text = await response.text();
     
     if (text.trim().startsWith('did:ckb')) {
-      return false;
+      return text.trim();
     } else if (text.includes('User not found')) {
-      return true;
+      return '';
     } else {
       return null;
     }
