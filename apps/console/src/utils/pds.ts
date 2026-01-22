@@ -1,6 +1,7 @@
-import { AtpAgent, FansWeb5CkbIndexAction, FansWeb5CkbPreCreateAccount } from "web5-api";
+import { AtpAgent, FansWeb5CkbDirectWrites, FansWeb5CkbIndexAction, FansWeb5CkbPreCreateAccount, FansWeb5CkbPreDirectWrites } from "web5-api";
 import type { UnsignedCommit } from "@atproto/repo";
 import { CID } from "multiformats";
+import { TID } from '@atproto/common-web'
 import * as cbor from "@ipld/dag-cbor";
 import { bytesFrom, bytesTo, hexFrom } from "@ckb-ccc/connector-react";
 
@@ -19,7 +20,7 @@ export function checkUsernameFormat(username: string): boolean {
 
 export async function getDidByUsername(username: string, pdsAPIUrl: string): Promise<string | null> {
   try {
-
+    // username in pds is lowercase
     const handle = `${username.toLowerCase()}.${pdsAPIUrl}`;
     const url = `https://${handle}/.well-known/atproto-did`;
     const response = await fetch(url);
@@ -41,6 +42,7 @@ export async function getDidByUsername(username: string, pdsAPIUrl: string): Pro
 export async function pdsPreCreateAccount(username: string, pdsAPIUrl: string, didKey: string, did: string): Promise<FansWeb5CkbPreCreateAccount.OutputSchema | null> {
   try {
     const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+    // username in pds is lowercase
     const handle = `${username.toLowerCase()}.${pdsAPIUrl}`;
     const res = await agent.fans.web5.ckb.preCreateAccount({
       handle,
@@ -226,6 +228,151 @@ export async function pdsLogin(did: string, pdsAPIUrl: string, didKey: string, c
     } else {
       return null;
     }
+  } catch (err: unknown) {
+    console.error(err);
+    return null;
+  }
+}
+
+export async function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<string | null> {
+  try {
+    const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.getRecord`);
+    url.searchParams.append('repo', did);
+    url.searchParams.append('collection', 'app.actor.profile');
+    url.searchParams.append('rkey', 'self');
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json; charset=utf-8',
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch profile: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const profile = JSON.stringify(data);
+    console.log('user profile data', profile);
+    return profile;
+  } catch (e) {
+    console.error('fetchUserProfile error:', e);
+    return null;
+  }
+}
+
+type PostRecordType = {
+  $type: 'app.actor.profile'
+  displayName: string;
+  handle: string;
+  [key: string]: string | number | boolean | null | undefined;
+};
+
+export async function preWritePDS(pdsAPIUrl: string, accessJwt: string, params: {
+  record: PostRecordType
+  did: string
+  rkey?: string
+  type?: 'update' | 'create'
+}): Promise<{writerData: FansWeb5CkbPreDirectWrites.OutputSchema, rkey: string, newRecord: PostRecordType} | null> {
+  try {
+    const operateType = params.type || 'create'
+    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+    agent.api.xrpc.setHeader('Authorization', `Bearer ${accessJwt}`);
+
+    const rkey = params.rkey || TID.next().toString()
+
+    const newRecord = {
+      created: new Date().toISOString(),
+      ...params.record,
+    }
+
+    const $typeMap = {
+      create: "fans.web5.ckb.preDirectWrites#create" as const,
+      update: "fans.web5.ckb.preDirectWrites#update" as const,
+    }
+
+    const writeRes = await agent.fans.web5.ckb.preDirectWrites({
+      repo: params.did,
+      writes: [{
+        $type: $typeMap[operateType],
+        collection: newRecord.$type,
+        rkey,
+        value: newRecord
+      }],
+      validate: false,
+    });
+
+    const writerData = writeRes.data
+
+    return {writerData, rkey, newRecord};
+    
+  } catch (err: unknown) {
+    console.error(err);
+    return null;
+  }
+}
+
+export function buildWriteSignData(writerData: FansWeb5CkbPreDirectWrites.OutputSchema): Uint8Array | null {
+  const uncommit: UnsignedCommit = {
+    did: writerData.did,
+    version: 3,
+    rev: writerData.rev,
+    prev: writerData.prev ? CID.parse(writerData.prev) : null,
+    data: CID.parse(writerData.data),
+  };
+  const unSignBytes = cbor.encode(uncommit)
+  // remove 0x prefix
+  const unSignBytesHex = hexFrom(unSignBytes).slice(2);
+  if (unSignBytesHex !== writerData.unSignBytes) {
+    console.error('sign bytes not consistent', unSignBytesHex, writerData.unSignBytes)
+    return null;
+  }
+  return unSignBytes;
+  // const sig = await keyPair.sign(unSignBytes)
+}
+
+export async function writePDS(pdsAPIUrl: string, accessJwt: string, didKey: string, writerData: FansWeb5CkbPreDirectWrites.OutputSchema, newRecord: PostRecordType, sig: Uint8Array, params: {
+  record: PostRecordType
+  did: string
+  rkey: string
+  type?: 'update' | 'create'
+}): Promise<FansWeb5CkbDirectWrites.OutputSchema | null> {
+  try {
+    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+    agent.api.xrpc.setHeader('Authorization', `Bearer ${accessJwt}`);
+
+    const $typeMap = {
+      create: "fans.web5.ckb.directWrites#create" as const,
+      update: "fans.web5.ckb.directWrites#update" as const,
+      delete: "fans.web5.ckb.directWrites#delete" as const,
+    }
+    const operateType = params.type || 'create'
+
+    const writeRes = await agent.fans.web5.ckb.directWrites({
+      repo: params.did,
+      validate: false,
+      signingKey: didKey,
+      writes: [{
+        $type: $typeMap[operateType],
+        collection: newRecord.$type,
+        rkey: params.rkey,
+        value: newRecord
+      }],
+      root: {
+        did: writerData.did,
+        version: 3,
+        rev: writerData.rev,
+        prev: writerData.prev,
+        data: writerData.data,
+        signedBytes: hexFrom(sig),
+    },
+    });
+
+    return writeRes.data;
   } catch (err: unknown) {
     console.error(err);
     return null;

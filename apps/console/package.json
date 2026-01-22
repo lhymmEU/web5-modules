@@ -19,6 +19,7 @@
     "@scure/base": "^2.0.0",
     "web5-api": "^0.0.27",
     "@atproto/repo": "^0.8.5",
+    "@atproto/common-web": "^0.4.12",
     "multiformats": "^13.3.7",
     "@ipld/dag-cbor": "^9.2.4",
     "react-router-dom": "^7.12.0"

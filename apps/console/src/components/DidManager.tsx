@@ -196,7 +196,7 @@ export function DidManager() {
       
       if (did && did !== '') {
         setCheckStatus('taken');
-        setCheckMessage('Username is already taken. DID: ${did}');
+        setCheckMessage(`Username is already taken. DID: ${did}`);
       } else if (did === '') {
         setCheckStatus('available');
         setCheckMessage(`Username is available.`);
@@ -231,7 +231,9 @@ export function DidManager() {
       let changed = false;
 
       // Determine new values
-      const handle = pdsUsername && pdsAddress ? `${pdsUsername}.${pdsAddress}` : 'alice.example.com';
+      // username in metadata is lowercase
+      const userName = pdsUsername.toLowerCase();
+      const handle = pdsUsername && pdsAddress ? `${userName}.${pdsAddress}` : 'alice.example.com';
       let endpoint = pdsAddress ? pdsAddress : 'https://pds.example.com';
       if (endpoint !== 'https://pds.example.com' && !endpoint.startsWith('http')) {
         endpoint = `https://${endpoint}`;
