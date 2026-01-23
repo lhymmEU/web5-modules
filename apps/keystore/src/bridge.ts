@@ -14,7 +14,9 @@ type BridgeResponse = {
   requestId: string;
   ok: boolean;
   error?: string;
-  [key: string]: unknown;
+  didKey?: string;
+  verified?: boolean;
+  signature?: Uint8Array;
 }
 
 const postReply = (event: MessageEvent, payload: unknown) => {
