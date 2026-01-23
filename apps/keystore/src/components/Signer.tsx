@@ -59,12 +59,12 @@ export function Signer() {
     <div className="card">
       <div className="flex justify-between items-center">
         <div className="flex flex-col gap-2">
-          <div style={{ fontWeight: 600 }}>Signer</div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Use local private key to sign messages.</div>
+          <div className="font-semibold">Signer</div>
+          <div className="text-secondary-sm">Use local private key to sign messages.</div>
         </div>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div className="mt-4">
         <div className="label">Message</div>
         <textarea
           className="input"
@@ -76,16 +76,16 @@ export function Signer() {
         />
       </div>
 
-      <div className="flex gap-2" style={{ marginTop: '1rem' }}>
+      <div className="flex gap-2 mt-4">
         <button type="button" className="btn btn-primary" onClick={onSign} disabled={!hasKey || busy || !message}>
           Sign
         </button>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div className="mt-4">
         <div className="label">Signature (hex)</div>
         <div className="flex gap-2 items-center">
-          <div className="code-block" style={{ flex: 1 }}>
+          <div className="code-block flex-1">
             {signatureHex ? signatureHex : 'Did not sign yet.'}
           </div>
           <button
@@ -104,18 +104,18 @@ export function Signer() {
               }
             }}
           >
-            <Copy size={18} color={copyStatus === 'ok' ? 'var(--success-color)' : 'var(--text-secondary)'} />
+            <Copy size={18} color={copyStatus === 'ok' ? 'var(--success-color)' : 'currentColor'} />
           </button>
         </div>
-        {error ? <div style={{ marginTop: '0.5rem', color: 'var(--danger-color)' }}>{error}</div> : null}
+        {error ? <div className="mt-2 text-danger">{error}</div> : null}
       </div>
 
-      <div style={{ marginTop: '1.5rem' }}>
+      <div className="mt-6">
         <div className="label">Verify Signature</div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Verify signature using active did:key.</div>
+        <div className="text-secondary-sm">Verify signature using active did:key.</div>
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div className="mt-4">
         <div className="label">did:key</div>
         <input
           className="input"
@@ -126,7 +126,7 @@ export function Signer() {
         />
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div className="mt-4">
         <div className="label">Message</div>
         <textarea
           className="input"
@@ -138,7 +138,7 @@ export function Signer() {
         />
       </div>
 
-      <div style={{ marginTop: '1rem' }}>
+      <div className="mt-4">
         <div className="label">Signature (hex)</div>
         <textarea
           className="input"
@@ -150,7 +150,7 @@ export function Signer() {
         />
       </div>
 
-      <div className="flex gap-2" style={{ marginTop: '1rem' }}>
+      <div className="flex gap-2 mt-4">
         <button
           type="button"
           className="btn btn-primary"
@@ -162,7 +162,7 @@ export function Signer() {
       </div>
 
       {verifyResult ? (
-        <div style={{ marginTop: '0.75rem', color: verifyResult.ok ? 'var(--success-color)' : 'var(--danger-color)' }}>
+        <div className={`mt-3 ${verifyResult.ok ? 'text-success' : 'text-danger'}`}>
           {verifyResult.text}
         </div>
       ) : null}

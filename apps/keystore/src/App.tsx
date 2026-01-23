@@ -10,13 +10,13 @@ function App() {
       <header className="header">
         <div className="header-content">
             <div className="logo">
-                <div style={{ backgroundColor: '#2563eb', padding: '0.5rem', borderRadius: '0.5rem', display: 'flex' }}>
-                    <Wallet size={24} color="white" />
+                <div className="logo-icon-wrapper">
+                    <Wallet size={24} />
                 </div>
                 <span>Web5 Keystore</span>
             </div>
             <div className="badge">
-                <ShieldCheck size={16} color="#16a34a" />
+                <ShieldCheck size={16} color="var(--success-color)" />
                 <span>Secure Sandbox Environment</span>
             </div>
         </div>
