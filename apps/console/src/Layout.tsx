@@ -142,12 +142,6 @@ export function Layout() {
       
       <nav className="nav-bar">
         <Link 
-          to="/" 
-          className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-        >
-          Home
-        </Link>
-        <Link 
           to="/keys" 
           className={`nav-link ${location.pathname === '/keys' ? 'active' : ''}`}
         >
