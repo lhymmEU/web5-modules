@@ -9,19 +9,48 @@ import {
   setActiveKey, 
   type KeyEntry
 } from '../utils/storage';
-import { PasswordModal } from './PasswordModal';
+
 
 export function KeyStore() {
   const [keys, setKeys] = useState<KeyEntry[]>([]);
   const [activeKey, setActiveKeyLocal] = useState<KeyEntry | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   // const [copyStatus, setCopyStatus] = useState<null | 'ok' | 'error'>(null);
-  
-  // Backup/Restore states
-  const [passwordPrompt, setPasswordPrompt] = useState<null | { mode: 'export' | 'import'; encryptedFile?: string }>(null);
-  const [passwordPromptBusy, setPasswordPromptBusy] = useState(false);
-  const [passwordPromptError, setPasswordPromptError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  
+  // Native Dialog Refs
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  const dialogResolver = useRef<((value: string | null) => void) | null>(null);
+  const [dialogTitle, setDialogTitle] = useState('');
+
+  // Helper to open dialog and wait for result
+  const requestPassword = (title: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      setDialogTitle(title);
+      dialogResolver.current = resolve;
+      if (dialogRef.current) {
+        if (passwordInputRef.current) passwordInputRef.current.value = '';
+        dialogRef.current.showModal();
+      } else {
+        resolve(null);
+      }
+    });
+  };
+
+  const handleDialogClose = () => {
+     // If closed via ESC or other means without explicit value
+     if (dialogResolver.current) {
+        dialogResolver.current(dialogRef.current?.returnValue || null);
+        dialogResolver.current = null;
+     }
+  };
+
+  const handleDialogSubmit = (e: React.FormEvent) => {
+     e.preventDefault();
+     const password = passwordInputRef.current?.value || '';
+     dialogRef.current?.close(password);
+  };
 
   // New Key Modal
   const [showNewKeyModal, setShowNewKeyModal] = useState(false);
@@ -98,9 +127,23 @@ export function KeyStore() {
     URL.revokeObjectURL(url);
   };
 
-  const onExport = () => {
-    setPasswordPromptError(null);
-    setPasswordPrompt({ mode: 'export' });
+  const onExport = async () => {
+    const password = await requestPassword('Enter export password');
+    if (!password) return;
+
+    try {
+      const plaintext = dumpLocalStorage();
+      const encrypted = await encryptData(plaintext, password);
+      if (encrypted === 'error') {
+        alert('Encryption failed, please try again.');
+        return;
+      }
+      const date = new Date().toISOString().slice(0, 10);
+      downloadTextFile(encrypted, `web5-keystore-backup-${date}.enc`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed.');
+    }
   };
 
   const onImport = () => {
@@ -109,32 +152,13 @@ export function KeyStore() {
 
   const onFileSelected = async (file: File) => {
     const encryptedFile = await file.text();
-    setPasswordPromptError(null);
-    setPasswordPrompt({ mode: 'import', encryptedFile });
-  };
+    const password = await requestPassword('Enter import password');
+    if (!password) return;
 
-  const onPasswordConfirm = async (password: string) => {
-    if (!passwordPrompt) return;
-    setPasswordPromptBusy(true);
-    setPasswordPromptError(null);
     try {
-      if (passwordPrompt.mode === 'export') {
-        const plaintext = dumpLocalStorage();
-        const encrypted = await encryptData(plaintext, password);
-        if (encrypted === 'error') {
-          setPasswordPromptError('Encryption failed, please try again.');
-          return;
-        }
-        const date = new Date().toISOString().slice(0, 10);
-        downloadTextFile(encrypted, `web5-keystore-backup-${date}.enc`);
-        setPasswordPrompt(null);
-        return;
-      }
-
-      const encryptedFile = passwordPrompt.encryptedFile ?? '';
       const decrypted = await decryptData(encryptedFile.trim(), password);
       if (decrypted === 'error') {
-        setPasswordPromptError('Decryption failed: incorrect password or corrupted file.');
+        alert('Decryption failed: incorrect password or corrupted file.');
         return;
       }
 
@@ -200,11 +224,8 @@ export function KeyStore() {
       }
       
       refreshFromStorage();
-      setPasswordPrompt(null);
     } catch {
-      setPasswordPromptError('Import failed: invalid file format.');
-    } finally {
-      setPasswordPromptBusy(false);
+      alert('Import failed: invalid file format.');
     }
   };
 
@@ -322,21 +343,50 @@ export function KeyStore() {
         }}
       />
 
-      {/* Password Prompt */}
-      {passwordPrompt ? (
-        <PasswordModal
-          title={passwordPrompt.mode === 'export' ? 'Enter export password' : 'Enter import password'}
-          confirmText={passwordPrompt.mode === 'export' ? 'Export' : 'Import'}
-          busy={passwordPromptBusy}
-          error={passwordPromptError}
-          onCancel={() => {
-            if (passwordPromptBusy) return;
-            setPasswordPrompt(null);
-            setPasswordPromptError(null);
-          }}
-          onConfirm={onPasswordConfirm}
-        />
-      ) : null}
+      {/* Native Password Dialog */}
+      <dialog 
+        ref={dialogRef} 
+        onClose={handleDialogClose}
+        style={{
+           padding: 0,
+           border: 'none',
+           borderRadius: '12px',
+           boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+           width: '320px',
+           maxWidth: '90%'
+        }}
+      >
+        <form onSubmit={handleDialogSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#1e293b' }}>{dialogTitle}</h3>
+          <input
+            ref={passwordInputRef}
+            type="password"
+            autoFocus
+            placeholder="Password"
+            style={{
+               width: '100%',
+               padding: '0.6rem',
+               border: '1px solid #cbd5e1',
+               borderRadius: '6px',
+               fontSize: '1rem',
+               boxSizing: 'border-box'
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+            {/* value="" ensures returnValue is empty string on cancel */}
+            <button 
+              type="button" 
+              className="btn btn-secondary"
+              onClick={() => dialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Confirm
+            </button>
+          </div>
+        </form>
+      </dialog>
 
       <style>{`
         .keys-list {
