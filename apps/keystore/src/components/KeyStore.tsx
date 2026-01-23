@@ -230,10 +230,10 @@ export function KeyStore() {
           </div>
         </div>
         <div className="flex gap-2">
-           <button className="btn btn-outline" onClick={onExport} title="Export Keys">
+           <button className="btn btn-primary" onClick={onExport} title="Export Keys">
              <Download size={16} /> Export
            </button>
-           <button className="btn btn-outline" onClick={onImport} title="Import Keys">
+           <button className="btn btn-primary" onClick={onImport} title="Import Keys">
              <Upload size={16} /> Import
            </button>
         </div>

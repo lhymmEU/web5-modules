@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, PenTool, CheckCircle } from 'lucide-react';
 import { bytesToHex, hexToBytes, signMessage, verifySignature } from '../utils/crypto';
 import { getActiveKey } from '../utils/storage';
 
@@ -78,7 +78,7 @@ export function Signer() {
 
       <div className="flex gap-2 mt-4">
         <button type="button" className="btn btn-primary" onClick={onSign} disabled={!hasKey || busy || !message}>
-          Sign
+          <PenTool size={16} /> Sign
         </button>
       </div>
 
@@ -157,7 +157,7 @@ export function Signer() {
           onClick={onVerify}
           disabled={verifyBusy || !verifyMessage || !verifyDidKey.trim() || !verifySignatureHex.trim()}
         >
-          Verify
+          <CheckCircle size={16} /> Verify
         </button>
       </div>
 
