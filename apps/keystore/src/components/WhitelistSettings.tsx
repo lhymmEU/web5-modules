@@ -1,16 +1,17 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   getStoredWhitelist, 
   addOriginToWhitelist, 
   removeOriginFromWhitelist, 
   DEFAULT_WHITELIST 
 } from '../utils/storage';
-import { Settings, Plus, Trash2, Globe } from 'lucide-react';
+import { Settings, Plus, Trash2, Globe, Download, Upload } from 'lucide-react';
 
 export function WhitelistSettings() {
   const [userWhitelist, setUserWhitelist] = useState<string[]>([]);
   const [newOrigin, setNewOrigin] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const refreshList = () => {
     setUserWhitelist(getStoredWhitelist());
@@ -38,13 +39,86 @@ export function WhitelistSettings() {
     refreshList();
   };
 
+  // --- Export / Import Logic ---
+
+  const onExport = () => {
+    const data = {
+      exportedAt: Date.now(),
+      whitelist: userWhitelist
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const date = new Date().toISOString().slice(0, 10);
+    link.download = `web5-whitelist-backup-${date}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const onImport = () => {
+    fileInputRef.current?.click();
+  };
+
+  const onFileSelected = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      
+      let importedList: string[] = [];
+      if (Array.isArray(parsed)) {
+        // Support direct array format
+        importedList = parsed;
+      } else if (parsed && Array.isArray(parsed.whitelist)) {
+        // Support object wrapper format
+        importedList = parsed.whitelist;
+      } else {
+        alert('Invalid file format: whitelist array not found.');
+        return;
+      }
+
+      let addedCount = 0;
+      for (const origin of importedList) {
+        try {
+          // Simple validation
+          new URL(origin); 
+          addOriginToWhitelist(origin);
+          addedCount++;
+        } catch {
+          // Ignore invalid URLs
+        }
+      }
+      
+      refreshList();
+      alert(`Imported ${addedCount} origins successfully.`);
+    } catch (e) {
+      console.error(e);
+      alert('Import failed: Invalid JSON file.');
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="card">
-      <div className="card-header">
-        <div className="card-icon">
-          <Settings size={24} />
+      <div className="card-header justify-between">
+        <div className="flex items-center gap-4">
+          <div className="card-icon">
+            <Settings size={24} />
+          </div>
+          <h2>Allowed Origins</h2>
         </div>
-        <h2>Allowed Origins</h2>
+        <div className="flex gap-2">
+           <button className="btn btn-primary" onClick={onExport} title="Export Whitelist">
+             <Download size={16} /> Export
+           </button>
+           <button className="btn btn-primary" onClick={onImport} title="Import Whitelist">
+             <Upload size={16} /> Import
+           </button>
+        </div>
       </div>
       
       <div className="card-content">
@@ -98,6 +172,18 @@ export function WhitelistSettings() {
           </ul>
         </div>
       </div>
+
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFileSelected(file);
+        }}
+      />
     </div>
   );
 }
