@@ -140,7 +140,7 @@ export function KeyStore() {
 
       const hasAnyExisting = localStorage.length > 0;
       if (hasAnyExisting) {
-        const confirmed = window.confirm('Importing will overwrite current data. Continue?');
+        const confirmed = window.confirm('Importing will merge with current keys. Existing keys with same ID will be preserved. Continue?');
         if (!confirmed) return;
       }
 
@@ -149,9 +149,54 @@ export function KeyStore() {
       // Support v2 (entries) and v1 (legacy, though we dropped legacy support in code, keeping import generic)
       const entries = parsed.entries || {};
       
-      localStorage.clear();
+      // Helper to safe parse
+      const safeParse = (str: string | null, fallback: any) => {
+         try { return str ? JSON.parse(str) : fallback; } catch { return fallback; }
+      };
+
+      // --- Merge Keystore State ---
+      const STATE_KEY = 'web5_keystore_state';
+      const currentState = safeParse(localStorage.getItem(STATE_KEY), { keys: [], activeKeyId: null });
+      const importedStateStr = entries[STATE_KEY];
+      
+      if (importedStateStr) {
+         const importedState = safeParse(importedStateStr, { keys: [] });
+         const existingIds = new Set(currentState.keys.map((k: any) => k.id));
+         
+         if (Array.isArray(importedState.keys)) {
+            for (const key of importedState.keys) {
+               if (!existingIds.has(key.id)) {
+                  currentState.keys.push(key);
+                  existingIds.add(key.id); // Update set just in case duplicates in import
+               }
+            }
+         }
+         // Preserve current active key, or use imported if none currently active
+         if (!currentState.activeKeyId && importedState.activeKeyId) {
+             currentState.activeKeyId = importedState.activeKeyId;
+         }
+         
+         localStorage.setItem(STATE_KEY, JSON.stringify(currentState));
+      }
+
+      // --- Merge Whitelist ---
+      const WHITELIST_KEY = 'web5_keystore_origin_whitelist';
+      const currentWhitelist = safeParse(localStorage.getItem(WHITELIST_KEY), []);
+      const importedWhitelistStr = entries[WHITELIST_KEY];
+      
+      if (importedWhitelistStr) {
+         const importedWhitelist = safeParse(importedWhitelistStr, []);
+         const mergedList = Array.from(new Set([...currentWhitelist, ...importedWhitelist]));
+         localStorage.setItem(WHITELIST_KEY, JSON.stringify(mergedList));
+      }
+
+      // --- Merge Other Keys ---
       for (const [key, value] of Object.entries(entries)) {
-        if (typeof value === 'string') localStorage.setItem(key, value);
+        if (key === STATE_KEY || key === WHITELIST_KEY) continue;
+        // Only add if not exists
+        if (localStorage.getItem(key) === null && typeof value === 'string') {
+           localStorage.setItem(key, value);
+        }
       }
       
       refreshFromStorage();
