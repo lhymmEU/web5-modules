@@ -257,7 +257,9 @@ export function KeyStore() {
                   <span className="list-item-title">{key.alias}</span>
                   {isActive && <span className="badge-pill active">Active</span>}
                 </div>
-                <div className="list-item-subtitle" title={key.didKey}>{key.didKey}</div>
+                <div className="list-item-subtitle" title={key.didKey}>
+                  <span>{key.didKey}</span>
+                </div>
               </div>
               
               <div className="list-item-actions">
