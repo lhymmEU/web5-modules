@@ -1,7 +1,6 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ccc } from '@ckb-ccc/connector-react';
-import './App.css';
 import { Layout } from './Layout';
 import { KeyManagerPage } from './pages/KeyManagerPage';
 import { DidManagerPage } from './pages/DidManagerPage';

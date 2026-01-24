@@ -67,76 +67,73 @@ export function Layout() {
         </div>
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', marginBottom: '1.5rem' }}>
+      <div className="flex-col mb-lg gap-sm ml-auto items-end">
         {/* Row 1: CKB Wallet Status */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-          {wallet ? (
-              <div className="wallet-badge" title={address}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Wallet size={16} />
-                  <span>{loadingInfo ? <Loader size={12} className="spin" /> : formatAddress(address)}</span>
-                </div>
-                {balance && <span className="wallet-balance">{balance} CKB</span>}
+        {wallet ? (
+            <div className="badge justify-between" title={address}>
+              <div className="flex gap-sm">
+                <Wallet size={16} />
+                <span>{loadingInfo ? <Loader size={12} className="spin" /> : formatAddress(address)}</span>
+              </div>
+              <div className="flex gap-sm items-center">
+                {balance && <span className="text-xs font-mono bg-white px-1 rounded">{balance} CKB</span>}
                 <button 
                   onClick={open}
-                  className="disconnect-btn"
+                  className="btn btn-sm btn-secondary border-none bg-transparent p-0"
                   title="Wallet Settings"
-                  style={{ marginLeft: '0.5rem' }}
                 >
                   <Key size={12} />
                 </button>
                 <button 
                   onClick={disconnect}
-                  className="disconnect-btn"
+                  className="btn btn-sm btn-secondary border-none bg-transparent p-0"
                   title="Disconnect Wallet"
                 >
                   <LogOut size={12} />
                 </button>
               </div>
-          ) : (
-            <button 
-              className="connect-btn"
-              onClick={open}
-            >
-              <Wallet size={16} /> Connect Wallet
-            </button>
-          )}
-        </div>
+            </div>
+        ) : (
+          <button 
+            className="btn btn-primary btn-sm"
+            onClick={open}
+          >
+            <Wallet size={16} /> Connect Wallet
+          </button>
+        )}
 
         {/* Row 2: Keystore Status */}
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div className="flex gap-md items-center justify-end">
           {didKey && (
-            <div className="did-badge" title={didKey}>
+            <div className="badge" title={didKey}>
               <Key size={16} />
-              <span>{didKey.slice(0, 12)}...{didKey.slice(-6)}</span>
+              <span className="font-mono">{didKey.slice(0, 12)}...{didKey.slice(-6)}</span>
             </div>
           )}
           <a 
             href={KEY_STORE_URL} 
             target="_blank" 
             rel="noopener noreferrer"
-            className={`connection-badge ${connected ? 'connected' : 'disconnected'}`}
-            style={{ textDecoration: 'none', cursor: 'pointer' }}
+            className={`badge ${connected ? 'badge-success' : 'badge-error'} cursor-pointer`}
+            style={{ textDecoration: 'none' }}
           >
             {connected ? <Wifi size={18} /> : <WifiOff size={18} />}
-            <span>{connected ? 'Keystore' : 'Keystore Off'}</span>
+            <span>{connected ? 'Connected' : 'Disconnected'}</span>
           </a>
         </div>
 
         {/* Row 3: PDS Selector */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <div className="pds-selector">
-            <Server size={16} />
-            <select 
-              value={pdsUrl} 
-              onChange={(e) => setPdsUrl(e.target.value)}
-              style={{ border: 'none', background: 'transparent', color: '#1e293b', fontWeight: 500, cursor: 'pointer', outline: 'none' }}
-            >
-              {availablePds.map(url => (
-                <option key={url} value={url}>{url}</option>
-              ))}
-            </select>
-          </div>
+        <div className="badge">
+          <Server size={16} />
+          <select 
+            value={pdsUrl} 
+            onChange={(e) => setPdsUrl(e.target.value)}
+            className="border-none bg-transparent text-inherit font-medium cursor-pointer outline-none"
+          >
+            {availablePds.map(url => (
+              <option key={url} value={url}>{url}</option>
+            ))}
+          </select>
         </div>
       </div>
       
@@ -164,147 +161,6 @@ export function Layout() {
       <div className="content-area">
         <Outlet />
       </div>
-
-      <style>{`
-        .header-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-        }
-        .header-logos {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-        .connection-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 999px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          transition: all 0.3s;
-        }
-        .connection-badge.connected {
-          background-color: #dcfce7;
-          color: #166534;
-          border: 1px solid #bbf7d0;
-        }
-        .connection-badge.disconnected {
-          background-color: #fee2e2;
-          color: #991b1b;
-          border: 1px solid #fecaca;
-        }
-        .pds-selector {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background-color: #f1f5f9;
-          border: 1px solid #e2e8f0;
-          border-radius: 999px;
-          font-size: 0.8rem;
-          color: #475569;
-        }
-        .did-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background-color: #f1f5f9;
-          color: #475569;
-          border: 1px solid #e2e8f0;
-          border-radius: 999px;
-          font-size: 0.8rem;
-          font-family: monospace;
-        }
-        .wallet-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.35rem 0.5rem 0.35rem 1rem;
-          background-color: #e0e7ff;
-          color: #4338ca;
-          border: 1px solid #c7d2fe;
-          border-radius: 999px;
-          font-size: 0.8rem;
-          font-weight: 500;
-        }
-        .wallet-balance {
-          font-family: monospace;
-          background: #fff;
-          padding: 0.1rem 0.4rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
-        }
-        .connect-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 999px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          background-color: #4f46e5;
-          color: white;
-          border: none;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-        .connect-btn:hover {
-          background-color: #4338ca;
-        }
-        .disconnect-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          border: none;
-          background: rgba(255, 255, 255, 0.5);
-          color: #4338ca;
-          cursor: pointer;
-          transition: all 0.2s;
-          padding: 0;
-        }
-        .disconnect-btn:hover {
-          background: #fff;
-          color: #dc2626;
-        }
-        .nav-bar {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-          margin: 0 0 2rem 0;
-          padding: 0.5rem;
-          background: #f1f5f9;
-          border-radius: 8px;
-          display: inline-flex;
-        }
-        .nav-link {
-          padding: 0.5rem 1.5rem;
-          text-decoration: none;
-          color: #64748b;
-          font-weight: 500;
-          border-radius: 6px;
-          transition: all 0.2s;
-        }
-        .nav-link:hover {
-          background: #e2e8f0;
-          color: #334155;
-        }
-        .nav-link.active {
-          background: #ffffff;
-          color: #2563eb;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .content-area {
-          margin-top: 2rem;
-        }
-      `}</style>
     </div>
   );
 }

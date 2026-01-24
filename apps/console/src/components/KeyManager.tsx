@@ -1,8 +1,8 @@
+
 import { useState } from 'react';
 import { useKeystore } from '../contexts/KeystoreContext';
-import { Check, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle, Shield, PenTool, CheckCircle } from 'lucide-react';
 import { bytesFrom, hexFrom } from '@ckb-ccc/core';
-import './KeyManager.css';
 
 export function KeyManager() {
   const { client, connected } = useKeystore();
@@ -85,29 +85,45 @@ export function KeyManager() {
 
   const renderStatus = (status: string, result: string) => {
     if (status === 'idle') return null;
-    if (status === 'loading') return <div className="result-loading">Processing...</div>;
+    if (status === 'loading') return <div className="text-sm text-muted italic">Processing...</div>;
+    
+    const isSuccess = status === 'success';
     return (
-      <div className={`result-box ${status}`}>
-        {status === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
-        <span className="result-text">{result}</span>
+      <div className={`text-sm p-sm rounded flex items-center gap-sm break-all ${isSuccess ? 'bg-green-50 text-success border border-green-200' : 'bg-red-50 text-danger border border-red-200'}`} style={{ 
+          background: isSuccess ? '#f0fdf4' : '#fef2f2',
+          color: isSuccess ? '#16a34a' : '#991b1b',
+          borderColor: isSuccess ? '#bbf7d0' : '#fecaca'
+      }}>
+        {isSuccess ? <Check size={16} /> : <AlertCircle size={16} />}
+        <span className="font-mono text-xs">{result}</span>
       </div>
     );
   };
 
   return (
-    <div className="key-manager-container">
-      <div className="km-card">
-        <h3>Basic Actions</h3>
-        <div className="km-actions-row">
-          <div className="action-item">
-            <button onClick={handlePing} disabled={!connected || pingStatus === 'loading'}>
+    <div className="container">
+      <div className="flex items-center gap-md mb-lg">
+        <div className="bg-primary-light p-sm rounded text-primary" style={{ background: '#e0e7ff', color: '#4338ca' }}>
+          <Shield size={24} />
+        </div>
+        <div>
+          <h2 className="m-0 text-lg">Key Manager</h2>
+          <div className="text-muted text-sm">Test connection and signing capabilities</div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3 className="flex items-center gap-sm mb-md text-sm">Basic Actions</h3>
+        <div className="flex-col">
+          <div className="flex items-center gap-md">
+            <button className="btn btn-secondary" onClick={handlePing} disabled={!connected || pingStatus === 'loading'}>
               Ping Bridge
             </button>
             {renderStatus(pingStatus, pingResult)}
           </div>
           
-          <div className="action-item">
-            <button onClick={handleGetDID} disabled={!connected || didStatus === 'loading'}>
+          <div className="flex items-center gap-md">
+            <button className="btn btn-secondary" onClick={handleGetDID} disabled={!connected || didStatus === 'loading'}>
               Get DID Key
             </button>
             {renderStatus(didStatus, didResult)}
@@ -115,82 +131,55 @@ export function KeyManager() {
         </div>
       </div>
 
-      <div className="km-card">
-        <h3>Sign Message</h3>
-        <div className="km-input-group">
+      <div className="card">
+        <h3 className="flex items-center gap-sm mb-md text-sm">
+          <PenTool size={18} /> Sign Message
+        </h3>
+        <div className="flex gap-sm mb-md">
           <input 
+            className="input flex-1"
             value={signMsg} 
             onChange={(e) => setSignMsg(e.target.value)} 
             placeholder="Message to sign"
           />
-          <button onClick={handleSign} disabled={!connected || signStatus === 'loading'}>
+          <button className="btn btn-primary" onClick={handleSign} disabled={!connected || signStatus === 'loading'}>
             {signStatus === 'loading' ? 'Signing...' : 'Sign'}
           </button>
         </div>
         {renderStatus(signStatus, signResult)}
       </div>
 
-      <div className="km-card">
-        <h3>Verify Signature</h3>
-        <div className="km-input-group km-vertical">
+      <div className="card">
+        <h3 className="flex items-center gap-sm mb-md text-sm">
+          <CheckCircle size={18} /> Verify Signature
+        </h3>
+        <div className="flex-col mb-md">
           <input 
+            className="input"
             value={verifyDid} 
             onChange={(e) => setVerifyDid(e.target.value)} 
             placeholder="DID Key"
           />
           <input 
+            className="input"
             value={verifyMsg} 
             onChange={(e) => setVerifyMsg(e.target.value)} 
             placeholder="Message"
           />
           <input 
+            className="input"
             value={verifySig} 
             onChange={(e) => setVerifySig(e.target.value)} 
             placeholder="Signature Hex"
           />
-          <button onClick={handleVerify} disabled={!connected || verifyStatus === 'loading'}>
-            {verifyStatus === 'loading' ? 'Verifying...' : 'Verify'}
-          </button>
+          <div className="flex justify-end">
+            <button className="btn btn-primary" onClick={handleVerify} disabled={!connected || verifyStatus === 'loading'}>
+              {verifyStatus === 'loading' ? 'Verifying...' : 'Verify'}
+            </button>
+          </div>
         </div>
         {renderStatus(verifyStatus, verifyResult)}
       </div>
-
-      <style>{`
-        .km-actions-row {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .action-item {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-        .result-box {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          border-radius: 6px;
-          font-size: 0.85rem;
-          word-break: break-all;
-        }
-        .result-box.success {
-          background-color: #f0fdf4;
-          color: #166534;
-          border: 1px solid #bbf7d0;
-        }
-        .result-box.error {
-          background-color: #fef2f2;
-          color: #991b1b;
-          border: 1px solid #fecaca;
-        }
-        .result-loading {
-          color: #64748b;
-          font-style: italic;
-          font-size: 0.85rem;
-        }
-      `}</style>
     </div>
   );
 }

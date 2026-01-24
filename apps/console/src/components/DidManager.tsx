@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Fingerprint, Loader, FileJson, Send, Hammer, RefreshCw, Trash2, ArrowRight, Edit, Search, CheckCircle } from 'lucide-react';
+import { Fingerprint, Loader, FileJson, Send, Hammer, RefreshCw, Trash2, ArrowRight, Edit, Search, CheckCircle, UserPlus } from 'lucide-react';
 import { ccc } from '@ckb-ccc/connector-react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { 
@@ -45,44 +45,43 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
   }, [item.didMetadata]);
 
   return (
-    <div style={{ marginBottom: '1rem', padding: '1rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-        <div>
-          <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '0.25rem' }}>{item.did}</div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>
+    <div className="card mb-md overflow-hidden">
+      <div className="flex-col items-start mb-sm gap-sm">
+        <div className="w-full">
+          <div className="font-bold text-inherit mb-xs break-all">{item.did}</div>
+          <div className="text-xs text-muted font-mono">
             Capacity: {item.capacity} CKB
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+          <div className="text-xs text-muted font-mono break-all">
             OutPoint: {item.txHash}:{item.index}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="flex gap-sm w-full justify-end">
            {mode === 'view' && (
              <>
-               <button className="btn-sm btn-secondary" onClick={() => setMode('update')} disabled={processing} title="Update">
+               <button className="btn btn-sm btn-secondary" onClick={() => setMode('update')} disabled={processing} title="Update">
                  <Edit size={14} />
                </button>
-               <button className="btn-sm btn-secondary" onClick={() => setMode('transfer')} disabled={processing} title="Transfer">
+               <button className="btn btn-sm btn-secondary" onClick={() => setMode('transfer')} disabled={processing} title="Transfer">
                  <ArrowRight size={14} />
                </button>
-               <button className="btn-sm btn-danger" onClick={() => onDestroy(item.args)} disabled={processing} title="Destroy">
+               <button className="btn btn-sm btn-danger" onClick={() => onDestroy(item.args)} disabled={processing} title="Destroy">
                  <Trash2 size={14} />
                </button>
              </>
            )}
            {mode !== 'view' && (
-             <button className="btn-sm btn-secondary" onClick={() => setMode('view')} disabled={processing}>Cancel</button>
+             <button className="btn btn-sm btn-secondary" onClick={() => setMode('view')} disabled={processing}>Cancel</button>
            )}
         </div>
       </div>
 
       {mode === 'transfer' && (
-        <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
-          <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500, color: '#1e293b' }}>Transfer to Address</div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="mb-md p-md bg-slate-50 rounded-md">
+          <div className="text-sm mb-sm font-medium">Transfer to Address</div>
+          <div className="flex gap-sm">
             <input 
-              className="input" 
-              style={{ flex: 1 }} 
+              className="input flex-1" 
               placeholder="ckb1..." 
               value={transferAddr}
               onChange={(e) => setTransferAddr(e.target.value)}
@@ -99,13 +98,12 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
       )}
 
       {mode === 'update' && (
-        <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '6px' }}>
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ fontSize: '0.875rem', marginBottom: '0.25rem', fontWeight: 500, color: '#1e293b' }}>Update Atproto Key</div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="mb-md bg-slate-50 p-md rounded-md">
+          <div className="mb-md">
+            <div className="text-sm mb-sm font-medium">Update Atproto Key</div>
+            <div className="flex gap-sm">
               <input 
-                className="input" 
-                style={{ flex: 1 }} 
+                className="input flex-1" 
                 placeholder="did:key:..." 
                 value={newKey}
                 onChange={(e) => setNewKey(e.target.value)}
@@ -121,11 +119,10 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
           </div>
           
           <div>
-            <div style={{ fontSize: '0.875rem', marginBottom: '0.25rem', fontWeight: 500, color: '#1e293b' }}>Update Also Known As (JSON)</div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div className="text-sm mb-sm font-medium">Update Also Known As (JSON)</div>
+            <div className="flex gap-sm">
               <input 
-                className="input" 
-                style={{ flex: 1 }} 
+                className="input flex-1" 
                 placeholder='["at://..."]' 
                 value={newAka}
                 onChange={(e) => setNewAka(e.target.value)}
@@ -142,10 +139,10 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
         </div>
       )}
       
-      <div style={{ marginTop: '0.5rem' }}>
+      <div className="mt-sm">
          <details>
-           <summary style={{ fontSize: '0.75rem', color: '#64748b', cursor: 'pointer' }}>Show Metadata</summary>
-           <pre style={{ fontSize: '0.7rem', background: '#f1f5f9', color: '#334155', padding: '0.5rem', borderRadius: '4px', overflowX: 'auto' }}>
+           <summary className="text-xs text-muted cursor-pointer">Show Metadata</summary>
+           <pre>
              {JSON.stringify(JSON.parse(item.didMetadata), null, 2)}
            </pre>
          </details>
@@ -565,64 +562,51 @@ export function DidManager() {
   };
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <div style={{ 
-          background: '#e0e7ff', 
-          padding: '0.5rem', 
-          borderRadius: '8px',
-          color: '#4338ca'
-        }}>
+    <div className="container">
+      <div className="flex items-center gap-md mb-lg">
+        <div className="bg-primary-light p-sm rounded text-primary" style={{ background: '#e0e7ff', color: '#4338ca' }}>
           <Fingerprint size={24} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>DID Manager</h2>
-          <div style={{ color: '#64748b', fontSize: '0.875rem' }}>Manage your Decentralized Identifiers</div>
+          <h2 className="m-0 text-lg">DID Manager</h2>
+          <div className="text-muted text-sm">Manage your Decentralized Identifiers</div>
         </div>
       </div>
 
       {!wallet && (
-        <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', marginBottom: '2rem' }}>
-           <div style={{ marginBottom: '1rem', color: '#64748b' }}>Please connect your CKB wallet in the header.</div>
+        <div className="card text-center border-dashed">
+           <div className="text-muted">Please connect your CKB wallet in the header.</div>
         </div>
       )}
 
       {/* Create DID Section */}
       {wallet && (
-        <div style={{ padding: '1rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+        <div className="card">
+          <h3 className="flex items-center gap-sm mb-md text-sm">
             <FileJson size={18} />
             Create DID
           </h3>
 
-          <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.875rem', marginBottom: '0.75rem', fontWeight: 600, color: '#475569' }}>
+          <div className="mb-md pb-md border-b border-slate-200">
+            <div className="text-sm font-medium mb-sm">
               PDS Account Info (Pre-registration)
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+            <div className="flex-col">
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>PDS Address</label>
-                <div style={{ 
-                  background: '#f1f5f9', 
-                  padding: '0.5rem 0.75rem', 
-                  borderRadius: '6px', 
-                  border: '1px solid #e2e8f0', 
-                  color: '#475569', 
-                  fontSize: '0.875rem' 
-                }}>
+                <label className="text-xs text-muted mb-sm block">PDS Address</label>
+                <div className="badge badge-primary">
                   {pdsAddress}
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Desired Username</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <label className="text-xs text-muted mb-sm block">Desired Username</label>
+                <div className="flex gap-sm">
                   <input 
-                    className="input" 
+                    className="input flex-1" 
                     placeholder="alice" 
                     value={pdsUsername}
                     onChange={(e) => setPdsUsername(e.target.value)}
-                    style={{ flex: 1 }}
                   />
                   <button 
                     className="btn btn-secondary"
@@ -637,37 +621,29 @@ export function DidManager() {
             </div>
 
             {checkMessage && (
-               <div style={{ 
-                 marginTop: '0.5rem', 
-                 fontSize: '0.75rem', 
-                 color: checkStatus === 'available' ? '#16a34a' : checkStatus === 'taken' || checkStatus === 'error' ? '#dc2626' : '#64748b',
-                 display: 'flex',
-                 alignItems: 'center',
-                 gap: '0.25rem'
-               }}>
+               <div className={`mt-sm text-xs flex items-center gap-sm ${checkStatus === 'available' ? 'text-success' : checkStatus === 'taken' || checkStatus === 'error' ? 'text-danger' : 'text-muted'}`}>
                  {checkStatus === 'available' && <CheckCircle size={12} />}
                  {checkMessage}
                </div>
             )}
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#475569' }}>DID Metadata (JSON)</div>
+          <div className="mb-md">
+            <div className="text-sm font-medium mb-sm">DID Metadata (JSON)</div>
             <textarea
-              className="input"
+              className="input font-mono input-area"
               rows={10}
               value={metadata}
               onChange={(e) => setMetadata(e.target.value)}
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.85rem' }}
+              style={{ fontSize: '0.85rem' }}
             />
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
+          <div className="mb-md">
             <button 
               className="btn btn-primary"
               onClick={handleBuildTx}
               disabled={buildStatus === 'building'}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
               {buildStatus === 'building' ? <Loader size={16} className="spin" /> : <Hammer size={16} />}
               Construct Transaction
@@ -675,37 +651,25 @@ export function DidManager() {
           </div>
 
           {buildStatus === 'error' && (
-            <div style={{ padding: '0.75rem', background: '#fef2f2', color: '#991b1b', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            <div className="badge badge-error mb-md w-full">
               Error: {buildError}
             </div>
           )}
 
           {buildStatus === 'success' && (
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-              <div style={{ marginBottom: '0.5rem', fontWeight: 600, color: '#0369a1' }}>Transaction Constructed Successfully</div>
+            <div className="mb-lg p-md bg-slate-50 rounded-md border border-slate-200" style={{ background: '#f0f9ff', borderColor: '#bae6fd' }}>
+              <div className="mb-sm font-medium text-primary" style={{ color: '#0369a1' }}>Transaction Constructed Successfully</div>
               
-              <div style={{ marginBottom: '0.5rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Generated DID</div>
-                <div style={{ fontFamily: 'monospace', background: '#fff', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1', color: '#334155' }}>
+              <div className="mb-sm overflow-hidden">
+                <div className="text-xs text-muted uppercase font-bold mb-sm">Generated DID</div>
+                <div className="font-mono bg-white p-sm rounded border border-slate-200 text-xs break-all">
                   {generatedDid}
                 </div>
               </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Raw Transaction</div>
-                <div style={{ 
-                  fontFamily: 'monospace', 
-                  background: '#fff', 
-                  padding: '0.5rem', 
-                  borderRadius: '4px', 
-                  border: '1px solid #cbd5e1', 
-                  color: '#334155',
-                  fontSize: '0.75rem',
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  wordBreak: 'break-all',
-                  whiteSpace: 'pre-wrap'
-                }}>
+              <div className="mb-md">
+                <div className="text-xs text-muted uppercase font-bold mb-sm">Raw Transaction</div>
+                <div className="font-mono bg-white p-sm rounded border border-slate-200 text-xs max-h-[300px] overflow-auto break-all" style={{ maxHeight: '300px', whiteSpace: 'pre-wrap' }}>
                   {(() => {
                     try {
                       return JSON.stringify(JSON.parse(rawTx), null, 2);
@@ -716,46 +680,47 @@ export function DidManager() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '1rem', borderBottom: '1px solid #cbd5e1', paddingBottom: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 600, color: '#dc2626' }}>Step 1:</span> Register your PDS account first. This ensures your handle is reserved.
+              <div className="mb-md pb-md border-b border-slate-200">
+                <div className="text-xs text-muted mb-sm">
+                  <span className="font-bold text-danger">Step 1:</span> Register your PDS account first. This ensures your handle is reserved.
                 </div>
-                <button 
-                  className="btn btn-secondary"
-                  onClick={handleRegisterPds}
-                  disabled={registerStatus === 'processing' || !generatedDid || !didKey}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}
-                >
-                  {registerStatus === 'processing' ? <Loader size={16} className="spin" /> : <Search size={16} />}
-                  Register PDS Account
-                </button>
+                <div className="flex">
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={handleRegisterPds}
+                    disabled={registerStatus === 'processing' || !generatedDid || !didKey}
+                  >
+                    {registerStatus === 'processing' ? <Loader size={16} className="spin" /> : <UserPlus size={16} />}
+                    Register PDS Account
+                  </button>
+                </div>
 
                 {registerStatus === 'error' && (
-                  <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem' }}>
+                  <div className="mt-sm text-danger text-sm">
                     Registration failed: {registerError}
                   </div>
                 )}
 
                 {registerStatus === 'success' && registeredUserInfo && (
-                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                    <div style={{ color: '#16a34a', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="mt-sm p-sm bg-green-50 rounded border border-green-200">
+                    <div className="text-success text-sm font-medium mb-sm flex items-center gap-sm">
                       <CheckCircle size={16} /> Registration Successful!
                     </div>
-                    <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#334155' }}>
-                      <div style={{ marginBottom: '0.25rem' }}><strong>Handle:</strong> {registeredUserInfo.handle}</div>
-                      <div style={{ marginBottom: '0.25rem' }}><strong>DID:</strong> {registeredUserInfo.did}</div>
+                    <div className="text-xs font-mono text-muted">
+                      <div className="mb-xs"><strong>Handle:</strong> {registeredUserInfo.handle}</div>
+                      <div className="mb-xs"><strong>DID:</strong> {registeredUserInfo.did}</div>
 
-                      <div style={{ marginTop: '0.5rem' }}>
+                      <div className="mt-sm">
                         <details>
-                          <summary style={{ cursor: 'pointer', color: '#64748b' }}>Show Tokens</summary>
-                          <div style={{ marginTop: '0.25rem', wordBreak: 'break-all' }}>
-                            <div style={{ marginBottom: '0.25rem' }}>
-                              <div style={{ fontWeight: 600, color: '#475569', marginBottom: '0.1rem' }}>Access JWT:</div>
-                              <div style={{ background: '#f1f5f9', padding: '0.25rem', borderRadius: '2px', color: '#64748b' }}>{registeredUserInfo.accessJwt}</div>
+                          <summary className="cursor-pointer text-muted">Show Tokens</summary>
+                          <div className="mt-xs break-all">
+                            <div className="mb-xs">
+                              <div className="font-bold text-muted mb-xs">Access JWT:</div>
+                              <div className="bg-slate-100 p-xs rounded text-muted">{registeredUserInfo.accessJwt}</div>
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, color: '#475569', marginBottom: '0.1rem' }}>Refresh JWT:</div>
-                              <div style={{ background: '#f1f5f9', padding: '0.25rem', borderRadius: '2px', color: '#64748b' }}>{registeredUserInfo.refreshJwt}</div>
+                              <div className="font-bold text-muted mb-xs">Refresh JWT:</div>
+                              <div className="bg-slate-100 p-xs rounded text-muted">{registeredUserInfo.refreshJwt}</div>
                             </div>
                           </div>
                         </details>
@@ -766,27 +731,26 @@ export function DidManager() {
               </div>
 
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 600, color: '#dc2626' }}>Step 2:</span> Send the transaction to CKB to register your DID.
+                <div className="text-xs text-muted mb-sm">
+                  <span className="font-bold text-danger">Step 2:</span> Send the transaction to CKB to register your DID.
                 </div>
                 <button 
-                  className="btn btn-success"
+                  className="btn btn-primary" 
                   onClick={handleSendTx}
                   disabled={sendStatus === 'sending'}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
                   {sendStatus === 'sending' ? <Loader size={16} className="spin" /> : <Send size={16} />}
                   Send Transaction
                 </button>
 
                 {sendStatus === 'error' && (
-                  <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem' }}>
+                  <div className="mt-sm text-danger text-sm">
                     Send failed: {sendError}
                   </div>
                 )}
 
                 {sendStatus === 'success' && (
-                  <div style={{ marginTop: '0.75rem', color: '#16a34a', fontSize: '0.875rem', fontWeight: 600 }}>
+                  <div className="mt-sm text-success text-sm font-bold">
                     Transaction Sent! Hash: {txHash}
                   </div>
                 )}
@@ -798,20 +762,19 @@ export function DidManager() {
 
       {/* Delete DID Section */}
       {wallet && (
-        <div style={{ padding: '1rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
-          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626' }}>
+        <div className="card">
+          <h3 className="flex items-center gap-sm mb-md text-sm text-danger">
             <Trash2 size={18} />
             Delete PDS Account
           </h3>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500, color: '#475569' }}>Username to Delete</div>
+          <div className="mb-md">
+            <div className="text-sm font-medium mb-sm">Username to Delete</div>
             <input 
               className="input" 
               placeholder="alice" 
               value={deleteUsername}
               onChange={(e) => setDeleteUsername(e.target.value)}
-              style={{ width: '100%' }}
             />
           </div>
 
@@ -819,21 +782,20 @@ export function DidManager() {
             className="btn btn-danger"
             onClick={handleDeletePdsAccount}
             disabled={deleteStatus === 'processing' || !deleteUsername || !didKey}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             {deleteStatus === 'processing' ? <Loader size={16} className="spin" /> : <Trash2 size={16} />}
             Delete PDS Account
           </button>
 
           {deleteStatus === 'error' && (
-            <div style={{ marginTop: '0.75rem', color: '#dc2626', fontSize: '0.875rem' }}>
+            <div className="mt-sm text-danger text-sm">
               Deletion failed: {deleteError}
             </div>
           )}
 
           {deleteStatus === 'success' && (
-            <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: '0.875rem' }}>
-              <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <div className="mt-sm p-sm bg-green-50 rounded border border-green-200 text-success text-sm">
+              <div className="font-medium flex items-center gap-sm mb-xs">
                 <CheckCircle size={16} /> PDS Account Deleted Successfully!
               </div>
               <div>Please proceed to "My DIDs" section below to destroy the corresponding DID Cell on CKB.</div>
@@ -844,17 +806,16 @@ export function DidManager() {
 
       {/* My DIDs Section */}
       {wallet && (
-        <div style={{ marginTop: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+        <div className="mt-lg">
+          <div className="flex justify-between items-center mb-md gap-sm">
+            <h3 className="flex items-center gap-sm text-sm m-0">
               <Fingerprint size={18} />
               My DIDs
             </h3>
             <button 
-              className="btn btn-secondary" 
+              className="btn btn-secondary btn-sm" 
               onClick={handleFetchList}
               disabled={loadingList}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}
             >
               <RefreshCw size={14} className={loadingList ? 'spin' : ''} />
               Refresh List
@@ -862,21 +823,13 @@ export function DidManager() {
           </div>
 
           {actionStatus && (
-            <div style={{ 
-              marginBottom: '1rem', 
-              padding: '0.75rem', 
-              borderRadius: '6px', 
-              fontSize: '0.875rem',
-              background: actionStatus.type === 'success' ? '#f0fdf4' : '#fef2f2',
-              color: actionStatus.type === 'success' ? '#15803d' : '#991b1b',
-              border: `1px solid ${actionStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`
-            }}>
+            <div className={`mb-md p-md rounded text-sm ${actionStatus.type === 'success' ? 'badge-success' : 'badge-error'}`} style={{ display: 'block' }}>
               {actionStatus.message}
             </div>
           )}
 
           {didList.length === 0 && !loadingList ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+            <div className="text-center p-lg text-muted bg-slate-50 rounded border border-dashed border-slate-300">
               No DIDs found. Click "Refresh List" to fetch or Create one above!
             </div>
           ) : (
@@ -896,22 +849,6 @@ export function DidManager() {
           )}
         </div>
       )}
-
-      <style>{`
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); } 
-          to { transform: rotate(360deg); }
-        }
-        .btn-sm {
-          padding: 0.35rem 0.5rem;
-          font-size: 0.75rem;
-          line-height: 1;
-          height: auto;
-        }
-      `}</style>
     </div>
   );
 }

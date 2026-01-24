@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Server, Loader, LogIn, AlertTriangle, Shield, User, Users, FileText, Edit2, Save, X } from 'lucide-react';
+import { Server, Loader, LogIn, LogOut, AlertTriangle, Shield, Edit2, Save, X } from 'lucide-react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
@@ -158,74 +159,62 @@ export function PdsManager() {
   };
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <div style={{ 
-          background: '#e0e7ff', 
-          padding: '0.5rem', 
-          borderRadius: '8px',
-          color: '#4338ca'
-        }}>
+    <div className="container">
+      <div className="flex items-center gap-md mb-lg">
+        <div className="bg-primary-light p-sm rounded text-primary" style={{ background: '#e0e7ff', color: '#4338ca' }}>
           <Server size={24} />
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>PDS Manager</h2>
-          <div style={{ color: '#64748b', fontSize: '0.875rem' }}>Manage your Personal Data Server account</div>
+          <h2 className="m-0 text-lg">PDS Manager</h2>
+          <div className="text-muted text-sm">Manage your Personal Data Server account</div>
         </div>
       </div>
       
       {!wallet ? (
-        <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-          <div style={{ marginBottom: '1rem', color: '#64748b' }}>Please connect your CKB wallet in the header.</div>
+        <div className="card text-center text-muted border-dashed">
+          Please connect your CKB wallet in the header.
         </div>
       ) : !connected ? (
-        <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#dc2626' }}>
+        <div className="card text-center text-danger border-dashed">
           Keystore disconnected. Please check your connection in the header.
         </div>
       ) : !session ? (
         /* Login Section */
-        <div style={{ padding: '1.5rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', maxWidth: '500px', margin: '0 auto' }}>
-          <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.125rem', textAlign: 'center', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+        <div className="card mx-auto max-w-sm">
+          <h3 className="flex justify-center items-center gap-sm mb-lg text-lg">
             <LogIn size={20} /> Login to PDS
           </h3>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>PDS URL</label>
-            <div style={{ 
-              background: '#f1f5f9', 
-              padding: '0.5rem 0.75rem', 
-              borderRadius: '6px', 
-              border: '1px solid #e2e8f0', 
-              color: '#475569', 
-              fontSize: '0.875rem' 
-            }}>
+          <div className="mb-md">
+            <label className="text-sm font-medium text-muted mb-xs block">PDS URL</label>
+            <div className="badge badge-primary">
               {pdsUrl}
             </div>
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>Username</label>
+          <div className="mb-lg">
+            <label className="text-sm font-medium text-muted mb-xs block">Username</label>
             <input 
               className="input" 
               placeholder="alice" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              style={{ width: '100%' }}
             />
           </div>
 
-          <button 
-            className="btn btn-primary"
-            onClick={handleLogin}
-            disabled={loginStatus === 'processing'}
-            style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-          >
-            {loginStatus === 'processing' ? <Loader size={16} className="spin" /> : <LogIn size={16} />}
-            Sign In with Keystore
-          </button>
+          <div className="flex">
+            <button 
+              className="btn btn-primary"
+              onClick={handleLogin}
+              disabled={loginStatus === 'processing'}
+            >
+              {loginStatus === 'processing' ? <Loader size={16} className="spin" /> : <LogIn size={16} />}
+              Sign In
+            </button>
+          </div>
 
           {loginStatus === 'error' && (
-            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef2f2', color: '#991b1b', borderRadius: '6px', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div className="mt-md p-sm bg-red-50 text-danger rounded flex items-center gap-sm text-sm">
               <AlertTriangle size={16} />
               {loginError}
             </div>
@@ -234,46 +223,43 @@ export function PdsManager() {
       ) : (
         /* Authenticated View */
         <div>
-          <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <div className="card">
             
             {isEditing ? (
                 /* Edit Form */
-                <div style={{ maxWidth: '500px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Edit Profile</h3>
-                        <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <div className="max-w-sm">
+                    <div className="flex justify-between items-center mb-lg">
+                        <h3 className="m-0 text-lg">Edit Profile</h3>
+                        <button onClick={() => setIsEditing(false)} className="btn btn-sm btn-secondary border-none">
                             <X size={20} />
                         </button>
                     </div>
 
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>Display Name</label>
+                    <div className="mb-md">
+                        <label className="text-sm font-medium text-muted mb-xs block">Display Name</label>
                         <input 
                             className="input" 
                             value={editDisplayName}
                             onChange={(e) => setEditDisplayName(e.target.value)}
                             placeholder="Display Name"
-                            style={{ width: '100%' }}
                         />
                     </div>
 
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>Description</label>
+                    <div className="mb-lg">
+                        <label className="text-sm font-medium text-muted mb-xs block">Description</label>
                         <textarea 
-                            className="input" 
+                            className="input input-area" 
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.target.value)}
                             placeholder="Bio / Description"
-                            style={{ width: '100%', minHeight: '100px', fontFamily: 'inherit' }}
                         />
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div className="flex gap-md">
                         <button 
                             className="btn btn-primary" 
                             onClick={handleSaveProfile}
                             disabled={isSaving}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                         >
                             {isSaving ? <Loader size={16} className="spin" /> : <Save size={16} />}
                             Save Changes
@@ -290,93 +276,64 @@ export function PdsManager() {
             ) : (
                 /* Display View */
                 <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
-                        {userProfile?.avatar ? (
-                            <img src={userProfile.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                            <User size={40} color="#94a3b8" />
-                        )}
-                        </div>
-                        <div>
-                        <div style={{ fontWeight: 700, fontSize: '1.5rem', color: '#0f172a', lineHeight: 1.2 }}>
+                    <div className="flex-col justify-between items-start mb-lg gap-sm">
+                        <div className="w-full">
+                        <div className="font-bold text-lg text-inherit line-height-tight mb-xs" style={{ fontSize: '1.5rem' }}>
                             {userProfile?.displayName || session?.handle}
                         </div>
-                        <div style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.5rem' }}>@{session?.handle}</div>
+                        <div className="text-sm text-muted mb-sm">@{session?.handle}</div>
                         
                         {userProfile?.description && (
-                            <div style={{ fontSize: '0.875rem', color: '#334155', maxWidth: '500px', lineHeight: 1.5 }}>
+                            <div className="text-sm text-muted w-full line-height-normal">
                             {userProfile.description}
                             </div>
                         )}
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button className="btn btn-secondary" onClick={() => setIsEditing(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div className="flex gap-sm">
+                        <button className="btn btn-secondary" onClick={() => setIsEditing(true)}>
                             <Edit2 size={16} /> Edit Profile
                         </button>
                         <button className="btn btn-secondary" onClick={handleLogout}>
-                            Sign Out
+                            <LogOut size={16} /> Sign Out
                         </button>
                     </div>
                     </div>
-
-                    {userProfile && (
-                    <div style={{ display: 'flex', gap: '2rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Users size={16} color="#64748b" />
-                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{userProfile.followersCount || 0}</span>
-                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Followers</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Users size={16} color="#64748b" />
-                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{userProfile.followsCount || 0}</span>
-                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Following</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <FileText size={16} color="#64748b" />
-                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{userProfile.postsCount || 0}</span>
-                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Posts</span>
-                        </div>
-                    </div>
-                    )}
                 </>
             )}
           </div>
 
           {/* Session Info */}
-          <div style={{ padding: '1.5rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+          <div className="card">
+            <h3 className="flex items-center gap-sm mb-md text-sm">
               <Shield size={18} /> Session Details
             </h3>
             
-            <div style={{ fontSize: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div className="flex-col text-sm">
               <div>
-                <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Access JWT</div>
+                <div className="text-muted mb-xs">Access JWT</div>
                 <details>
-                  <summary style={{ cursor: 'pointer', color: '#2563eb', fontSize: '0.75rem' }}>Show Token</summary>
-                  <div style={{ marginTop: '0.5rem', fontFamily: 'monospace', fontSize: '0.75rem', background: '#e2e8f0', color: '#1e293b', padding: '0.5rem', borderRadius: '4px', wordBreak: 'break-all', maxHeight: '100px', overflowY: 'auto' }}>
+                  <summary className="cursor-pointer text-primary text-xs">Show Token</summary>
+                  <div className="mt-xs font-mono text-xs bg-slate-100 p-sm rounded break-all max-h-100 overflow-auto">
                     {session.accessJwt}
                   </div>
                 </details>
               </div>
 
               <div>
-                <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>Refresh JWT</div>
+                <div className="text-muted mb-xs">Refresh JWT</div>
                 <details>
-                  <summary style={{ cursor: 'pointer', color: '#2563eb', fontSize: '0.75rem' }}>Show Token</summary>
-                  <div style={{ marginTop: '0.5rem', fontFamily: 'monospace', fontSize: '0.75rem', background: '#e2e8f0', color: '#1e293b', padding: '0.5rem', borderRadius: '4px', wordBreak: 'break-all', maxHeight: '100px', overflowY: 'auto' }}>
+                  <summary className="cursor-pointer text-primary text-xs">Show Token</summary>
+                  <div className="mt-xs font-mono text-xs bg-slate-100 p-sm rounded break-all max-h-100 overflow-auto">
                     {session.refreshJwt}
                   </div>
                 </details>
               </div>
               
               <div>
-                <div style={{ color: '#64748b', marginBottom: '0.25rem' }}>DID Metadata</div>
+                <div className="text-muted mb-xs">DID Metadata</div>
                 <details>
-                  <summary style={{ cursor: 'pointer', color: '#2563eb', fontSize: '0.75rem' }}>Show Metadata</summary>
-                  <pre style={{ marginTop: '0.5rem', fontFamily: 'monospace', fontSize: '0.75rem', background: '#f1f5f9', color: '#334155', padding: '0.5rem', borderRadius: '4px', overflowX: 'auto' }}>
+                  <summary className="cursor-pointer text-primary text-xs">Show Metadata</summary>
+                  <pre className="mt-xs">
                     {(() => {
                       try {
                         return JSON.stringify(JSON.parse(session.didMetadata), null, 2);
