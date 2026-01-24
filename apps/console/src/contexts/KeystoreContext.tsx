@@ -6,8 +6,6 @@ interface KeystoreContextType {
   client: KeystoreClient | null;
   connected: boolean;
   didKey: string | null;
-  logs: string[];
-  addLog: (msg: string) => void;
 }
 
 const KeystoreContext = createContext<KeystoreContextType | null>(null);
@@ -16,17 +14,12 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<KeystoreClient | null>(null);
   const [connected, setConnected] = useState(false);
   const [didKey, setDidKey] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
-
-  const addLog = (msg: string) => {
-    setLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
-  };
 
   useEffect(() => {
     // Initialize client only once
     const c = new KeystoreClient('http://localhost:3001/bridge.html');
     setClient(c);
-    addLog('Global Client initialized, connecting...');
+    console.log('Global Client initialized, connecting...');
 
     let isMounted = true;
 
@@ -34,23 +27,23 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
       .then(async () => {
         if (isMounted) {
           setConnected(true);
-          addLog('Connected to Keystore Bridge (Global)');
+          console.log('Connected to Keystore Bridge (Global)');
           
           // Auto-fetch DID on connect
           try {
             const didKey = await c.getDIDKey();
             if (isMounted && didKey) {
               setDidKey(didKey);
-              addLog(`DID Loaded: ${didKey}`);
+              console.log(`DID Loaded: ${didKey}`);
             }
-          } catch (e: any) {
-            addLog(`Failed to fetch DID on connect: ${e.message}`);
+          } catch (err) {
+            console.log(`Failed to fetch DID on connect: ${err instanceof Error ? err.message : String(err)}`);
           }
         }
       })
       .catch((err) => {
         if (isMounted) {
-          addLog(`Global Connection failed: ${err.message}`);
+          console.log(`Global Connection failed: ${err.message}`);
         }
       });
 
@@ -59,12 +52,12 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
       c.disconnect();
       setConnected(false);
       setDidKey(null);
-      addLog('Global Client disconnected');
+      console.log('Global Client disconnected');
     };
   }, []);
 
   return (
-    <KeystoreContext.Provider value={{ client, connected, didKey, logs, addLog }}>
+    <KeystoreContext.Provider value={{ client, connected, didKey}}>
       {children}
     </KeystoreContext.Provider>
   );

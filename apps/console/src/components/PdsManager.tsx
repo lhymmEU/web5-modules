@@ -4,7 +4,7 @@ import { Server, Loader, LogIn, LogOut, AlertTriangle, Shield, Edit2, Save, X } 
 import { useKeystore } from '../contexts/KeystoreContext';
 import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
-import { pdsLogin, fetchUserProfile, writePDS, type sessionInfo, getDidByUsername } from '../utils/pds';
+import { pdsLogin, fetchUserProfile, writePDS, type PostRecordType, type sessionInfo, getDidByUsername } from '../utils/pds';
 
 export function PdsManager() {
   const { wallet } = ccc.useCcc();
@@ -23,7 +23,7 @@ export function PdsManager() {
   const [session, setSession] = useState<sessionInfo | null>(null);
   
   // Profile State
-  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [userProfile, setUserProfile] = useState<PostRecordType | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -56,17 +56,12 @@ export function PdsManager() {
     
     setSaving(true);
     try {
-        const record: any = {
+        const record: PostRecordType = {
             $type: 'app.actor.profile',
             displayName: editDisplayName,
             description: editDescription,
-            // handle: session.handle, // handle is not usually in the profile record itself, but we can add it if needed
+            handle: session.handle,
         };
-        // Preserve other fields if updating
-        if (userProfile) {
-             if (userProfile.avatar) record.avatar = userProfile.avatar;
-             if (userProfile.banner) record.banner = userProfile.banner;
-        }
 
         const writeResult = await writePDS(agent, session.accessJwt, didKey, client, {
             record,

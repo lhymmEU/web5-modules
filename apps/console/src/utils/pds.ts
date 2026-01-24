@@ -259,7 +259,7 @@ export async function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<
   }
 }
 
-type PostRecordType = {
+export type PostRecordType = {
   $type: 'app.actor.profile'
   displayName: string;
   handle: string;
