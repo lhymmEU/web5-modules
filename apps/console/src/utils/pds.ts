@@ -1,9 +1,9 @@
-import { AtpAgent, FansWeb5CkbDirectWrites, FansWeb5CkbIndexAction, FansWeb5CkbPreCreateAccount, FansWeb5CkbPreDirectWrites } from "web5-api";
+import { AtpAgent, FansWeb5CkbIndexAction} from "web5-api";
 import type { UnsignedCommit } from "@atproto/repo";
 import { CID } from "multiformats";
 import { TID } from '@atproto/common-web'
 import * as cbor from "@ipld/dag-cbor";
-import { bytesFrom, bytesTo, hexFrom } from "@ckb-ccc/connector-react";
+import { bytesFrom, hexFrom } from "@ckb-ccc/connector-react";
 import type { KeystoreClient } from "./KeystoreClient";
 
 export function checkUsernameFormat(username: string): boolean {

@@ -3,10 +3,10 @@ import { Server, Loader, LogIn, AlertTriangle, Shield, User, Users, FileText, Ed
 import { useKeystore } from '../contexts/KeystoreContext';
 import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
-import { pdsLogin, fetchUserProfile, writePDS, type sessionInfo } from '../utils/pds';
+import { pdsLogin, fetchUserProfile, writePDS, type sessionInfo, getDidByUsername } from '../utils/pds';
 
 export function PdsManager() {
-  const { wallet, open } = ccc.useCcc();
+  const { wallet } = ccc.useCcc();
   const signer = ccc.useSigner();
   const { connected, didKey, client } = useKeystore();
   const { agent, pdsUrl } = usePds();
@@ -15,9 +15,10 @@ export function PdsManager() {
   const [address, setAddress] = useState<string>('');
   
   // Login States
-  const [did, setDid] = useState('');
+  const [username, setUsername] = useState<string>('');
+  const [did, setDid] = useState<string>('');
   const [loginStatus, setLoginStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
-  const [loginError, setLoginError] = useState('');
+  const [loginError, setLoginError] = useState<string>('');
   const [session, setSession] = useState<sessionInfo | null>(null);
   
   // Profile State
@@ -109,8 +110,8 @@ export function PdsManager() {
   }, [signer]);
 
   const handleLogin = async () => {
-    if (!did || !pdsUrl || !address || !didKey || !agent) {
-      setLoginError('Missing required info (DID, PDS URL, CKB Address, DID Key, or Agent)');
+    if ((!did && !username) || !pdsUrl || !address || !didKey || !agent) {
+      setLoginError('Missing required info (Username/DID, PDS URL, CKB Address, DID Key, or Agent)');
       setLoginStatus('error');
       return;
     }
@@ -126,7 +127,18 @@ export function PdsManager() {
     setSession(null);
 
     try {
-      const sessionInfo = await pdsLogin(agent, did, didKey, address, client);
+      let targetDid = did;
+      if (!targetDid && username) {
+        const resolved = await getDidByUsername(username, pdsUrl);
+        if (resolved && resolved !== '') {
+          targetDid = resolved;
+          setDid(resolved);
+        } else {
+          throw new Error(`Could not resolve DID for ${username}`);
+        }
+      }
+
+      const sessionInfo = await pdsLogin(agent, targetDid, didKey, address, client);
       
       if (sessionInfo) {
         setSession(sessionInfo);
@@ -164,8 +176,7 @@ export function PdsManager() {
       
       {!wallet ? (
         <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-          <div style={{ marginBottom: '1rem', color: '#64748b' }}>Please connect your CKB wallet to proceed.</div>
-          <button className="btn btn-primary" onClick={open}>Connect Wallet</button>
+          <div style={{ marginBottom: '1rem', color: '#64748b' }}>Please connect your CKB wallet in the header.</div>
         </div>
       ) : !connected ? (
         <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#dc2626' }}>
@@ -193,12 +204,12 @@ export function PdsManager() {
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>DID</label>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.25rem' }}>Username</label>
             <input 
               className="input" 
-              placeholder="did:ckb:..." 
-              value={did}
-              onChange={(e) => setDid(e.target.value)}
+              placeholder="alice" 
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               style={{ width: '100%' }}
             />
           </div>

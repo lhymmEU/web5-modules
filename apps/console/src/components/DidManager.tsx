@@ -284,36 +284,44 @@ export function DidManager() {
   const [sendError, setSendError] = useState<string>('');
 
   // PDS Delete States
-  const [deletePdsDid, setDeletePdsDid] = useState('');
+  const [deleteUsername, setDeleteUsername] = useState('');
   const [deleteStatus, setDeleteStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [deleteError, setDeleteError] = useState('');
 
   const handleDeletePdsAccount = async () => {
-    if (!deletePdsDid || !address || !didKey || !pdsAddress || !agent) {
-      setDeleteError('Missing required info (DID to delete, CKB Address, DID Key, PDS Address, or Agent)');
+    if (!deleteUsername || !address || !didKey || !pdsAddress || !agent) {
+      setDeleteError('Missing required info (Username, CKB Address, DID Key, PDS Address, or Agent)');
       setDeleteStatus('error');
       return;
     }
-
-    if (!confirm('Are you sure you want to delete this PDS account? This action cannot be undone.')) return;
 
     setDeleteStatus('processing');
     setDeleteError('');
 
     try {
+      // 0. Resolve DID
+      const resolvedDid = await getDidByUsername(deleteUsername, pdsAddress);
+      if (!resolvedDid || resolvedDid === '') {
+         throw new Error(`Could not find DID for username "${deleteUsername}" on PDS ${pdsAddress}`);
+      }
+
+      if (!confirm(`Are you sure you want to delete PDS account for "${deleteUsername}" (DID: ${resolvedDid})? This action cannot be undone.`)) {
+        setDeleteStatus('idle');
+        return;
+      }
+
       if (!client) {
         throw new Error('Keystore client not connected');
       }
 
-      // 3. Delete account
-      const success = await pdsDeleteAccount(agent, deletePdsDid, address, didKey, client);
+      // 1. Delete account
+      const success = await pdsDeleteAccount(agent, resolvedDid, address, didKey, client);
       
       if (success) {
         setDeleteStatus('success');
-        setDeletePdsDid(''); // Clear input on success
+        setDeleteUsername(''); // Clear input on success
       } else {
-        setDeleteError('Failed to delete PDS account');
-        setDeleteStatus('error');
+        throw new Error('Failed to delete PDS account');
       }
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : String(e));
@@ -341,6 +349,7 @@ export function DidManager() {
       if (!client) {
         throw new Error('Keystore client not connected');
       }
+      
       // Create account
       const userInfo = await pdsCreateAccount(agent, pdsAddress, pdsUsername, didKey, generatedDid, address, client);
       
@@ -574,7 +583,7 @@ export function DidManager() {
 
       {!wallet && (
         <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', marginBottom: '2rem' }}>
-           <div style={{ marginBottom: '1rem', color: '#64748b' }}>Please connect your CKB wallet in the header to proceed.</div>
+           <div style={{ marginBottom: '1rem', color: '#64748b' }}>Please connect your CKB wallet in the header.</div>
         </div>
       )}
 
@@ -796,12 +805,12 @@ export function DidManager() {
           </h3>
 
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500, color: '#475569' }}>DID to Delete</div>
+            <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500, color: '#475569' }}>Username to Delete</div>
             <input 
               className="input" 
-              placeholder="did:ckb:..." 
-              value={deletePdsDid}
-              onChange={(e) => setDeletePdsDid(e.target.value)}
+              placeholder="alice" 
+              value={deleteUsername}
+              onChange={(e) => setDeleteUsername(e.target.value)}
               style={{ width: '100%' }}
             />
           </div>
@@ -809,7 +818,7 @@ export function DidManager() {
           <button 
             className="btn btn-danger"
             onClick={handleDeletePdsAccount}
-            disabled={deleteStatus === 'processing' || !deletePdsDid || !didKey}
+            disabled={deleteStatus === 'processing' || !deleteUsername || !didKey}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             {deleteStatus === 'processing' ? <Loader size={16} className="spin" /> : <Trash2 size={16} />}
