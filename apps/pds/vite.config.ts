@@ -1,18 +1,20 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import federation from '@originjs/vite-plugin-federation'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
     federation({
       name: 'pds_module',
       filename: 'remoteEntry.js',
       exposes: {
         './logic': './src/logic.ts',
+        './constants': './src/constants.ts',
       },
-      shared: ['react', 'react-dom']
+      remotes: {
+        keystore: 'http://localhost:3001/assets/remoteEntry.js',
+      },
+      shared: ['web5-api']
     })
   ],
   server: {

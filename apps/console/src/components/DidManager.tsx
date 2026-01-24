@@ -12,8 +12,8 @@ import {
   destroyDidCell,
   updateDidKey,
   updateAka
-} from '../utils/didCKB';
-import { getDidByUsername, checkUsernameFormat, type userInfo, pdsDeleteAccount, pdsCreateAccount } from '../utils/pds';
+} from 'did_module/logic';
+import { getDidByUsername, checkUsernameFormat, type userInfo, pdsDeleteAccount, pdsCreateAccount } from 'pds_module/logic';
 
 import { usePds } from '../contexts/PdsContext';
 

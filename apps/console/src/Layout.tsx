@@ -7,7 +7,7 @@ import { usePds } from './contexts/PdsContext';
 import { Wifi, WifiOff, Key, Wallet, LogOut, Loader, Server } from 'lucide-react';
 import { ccc } from '@ckb-ccc/connector-react';
 import { useState, useEffect } from 'react';
-import { KEY_STORE_URL } from './constants/keystore';
+import { KEY_STORE_URL } from 'keystore/constants';
 
 export function Layout() {
   const location = useLocation();

@@ -11,8 +11,9 @@ export default defineConfig({
       remotes: {
         did_module: 'http://localhost:3002/assets/remoteEntry.js',
         pds_module: 'http://localhost:3003/assets/remoteEntry.js',
+        keystore: 'http://localhost:3001/assets/remoteEntry.js',
       },
-      shared: ['react', 'react-dom']
+      shared: ['@ckb-ccc/ccc', 'web5-api']
     })
   ],
   server: {

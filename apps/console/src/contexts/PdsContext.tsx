@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { AVAILABLE_PDS } from '../constants/pds';
+// @ts-ignore
+import { AVAILABLE_PDS } from 'pds_module/constants';
 import { AtpAgent } from 'web5-api';
 
 interface PdsContextType {

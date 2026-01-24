@@ -5,9 +5,15 @@
 本项目旨在构建一套标准化的 Web5 基础模块，并通过一个 **Console 控制台应用** 演示这些模块的集成与使用。
 
 ### 核心设计理念
-1.  **Keystore (独立应用)**: 拥有独立的 Web UI 和域名，作为用户的“网页钱包”，管理私钥安全。
-2.  **Modules (DID & PDS)**: **不提供独立访问的 Web UI**，而是作为 **远程模块 (Federated Modules)** 发布。它们封装了核心逻辑和可选的 UI 组件，供宿主应用调用。
-3.  **Console (宿主应用)**: 一个标准的 Web5 业务应用 Demo。它没有额外的业务逻辑，专注于展示如何通过集成上述模块来实现用户注册、登录、DID 管理和数据读写等通用功能。
+1.  **Keystore (Wallet Provider)**: 
+    *   作为**独立应用**运行 (Standalone App)，拥有独立的 Web UI，用于管理用户私钥和签名授权。
+    *   同时作为**远程模块** (Remote Module)，暴露 `KeystoreClient` SDK，供宿主应用连接和通信。
+2.  **Modules (DID & PDS)**: 
+    *   **无独立 UI**，作为 **远程模块 (Federated Modules)** 发布。
+    *   封装了核心业务逻辑（如 CKB 交易构建、PDS 交互），供宿主应用直接调用。
+3.  **Console (Host App)**: 
+    *   一个标准的 Web5 业务应用 Demo。
+    *   通过 Module Federation 集成上述模块，实现用户注册、登录、DID 管理和数据读写等功能。
 
 ## 2. 总体架构设计
 
@@ -19,89 +25,170 @@ graph TD
     
     subgraph "Console App (Host)"
         Dashboard[控制台 UI]
-        AuthFlow[认证流程]
-        DataManager[数据管理]
+        ClientSDK[KeystoreClient SDK]
+        Logic_DID[DID Logic]
+        Logic_PDS[PDS Logic]
     end
     
-    subgraph "Keystore App (Standalone)"
+    subgraph "Keystore App (Provider)"
         WalletUI[钱包 UI]
+        Bridge[Bridge Iframe]
         Signer[签名器]
-        Storage[(LocalStorage)]
     end
     
-    subgraph "Remote Providers"
-        DID_Module[DID Module (Remote)]
-        PDS_Module[PDS Module (Remote)]
+    subgraph "Remote Static Assets"
+        Remote_Keystore[Keystore RemoteEntry]
+        Remote_DID[DID Module RemoteEntry]
+        Remote_PDS[PDS Module RemoteEntry]
     end
 
     User -->|访问| Dashboard
     User -->|管理密钥| WalletUI
     
-    Dashboard -->|Iframe/Popup| Signer
-    Dashboard -->|Federation Import| DID_Module
-    Dashboard -->|Federation Import| PDS_Module
+    Dashboard -->|Import| ClientSDK
+    Dashboard -->|Import| Logic_DID
+    Dashboard -->|Import| Logic_PDS
+    
+    ClientSDK -.->|Iframe PostMessage| Bridge
+    Bridge --> Signer
+    
+    ClientSDK -.->|Load| Remote_Keystore
+    Logic_DID -.->|Load| Remote_DID
+    Logic_PDS -.->|Load| Remote_PDS
 ```
 
-### 2.2 域名与角色规划
+### 2.2 服务与端口规划
 
-| 应用/模块 | 路径/域名 (Local) | 类型 | 说明 |
+| 应用/模块 | 端口 (Local) | 类型 | 说明 |
 | :--- | :--- | :--- | :--- |
-| **Console** | `localhost:3000` | **Host App** | 用户入口。集成所有模块，展示 Web5 功能。 |
-| **Keystore** | `localhost:3001` | **Standalone App** | 独立应用。提供钱包界面，管理私钥，响应签名请求。 |
-| **DID Module**| `localhost:3002` | **Remote Provider** | 静态资源服务。无独立 UI，仅提供 `remoteEntry.js`。 |
-| **PDS Module**| `localhost:3003` | **Remote Provider** | 静态资源服务。无独立 UI，仅提供 `remoteEntry.js`。 |
+| **Console** | `3000` | **Host App** | 用户入口。集成所有模块。 |
+| **Keystore** | `3001` | **App & Provider** | 提供钱包界面 (Direct/Bridge) 及 Client SDK (Federation)。 |
+| **DID Module**| `3002` | **Remote Provider** | 纯逻辑模块。提供 CKB DID 相关操作。 |
+| **PDS Module**| `3003` | **Remote Provider** | 纯逻辑模块。提供 AT Protocol/Web5 相关操作。 |
 
 ## 3. 详细模块设计
 
-### 3.1 Keystore (Wallet App)
-*   **交互模式**: 
-    *   **Direct**: 用户直接访问 `localhost:3001` 管理密钥（创建、删除、导出、导入）。
-    *   **Bridge**: `Console` 通过隐藏 iframe 加载 `localhost:3001/bridge.html` 建立通信通道。
-*   **核心功能**:
-    *   生成并管理 `Secp256k1` 密钥对。
-    *   使用本地密钥进行签名，验签。
-    *   管理可连接 `Keystore` 的 `Web5` 应用白名单。
-    *   `bridge` 监听 `postMessage` 事件，进行签名，验签等处理。
+### 3.1 Keystore (Wallet)
+*   **功能**: 管理 Secp256k1 密钥，提供签名服务。
+*   **Exposes (Module Federation)**:
+    *   `./KeystoreClient`: 提供 `KeystoreClient` 类，封装了与 Bridge 的通信逻辑。
+    *   `./constants`: 提供 `KEY_STORE_URL` 等配置常量。
+*   **通信机制**:
+    *   Host App 实例化 `KeystoreClient`。
+    *   Client 在后台创建一个隐藏的 `iframe` 指向 `Keystore` 的 `bridge.html`。
+    *   通过 `postMessage` 进行安全的跨域通信。
 
-### 3.2 DID Module (Remote)
-*   **定位**: 纯逻辑与组件库，通过 Module Federation 暴露。
-*   **Exports**:
-    *   `logic`: `createDID`, `resolveDID` 等函数。
-    *   `components`: (可选) `<DIDCard />`, `<DIDBadge />` 等展示型组件。
-*   **使用场景**: Console 导入此模块，在“DID 管理”页面调用其逻辑生成 DID，并展示给用户。
+### 3.2 DID Module
+*   **功能**: 封装 CKB 区块链交互逻辑，实现 DID 的 CRUD 操作。
+*   **Exposes**:
+    *   `./logic`: 核心逻辑函数。
+*   **主要 API**:
+    *   `buildCreateTransaction`: 构建创建 DID 的 CKB 交易。
+    *   `fetchDidCkbCellsInfo`: 查询链上 DID Cell 信息。
+    *   `updateDidKey`: 更新 DID 绑定的公钥。
+    *   `transferDidCell`: 转移 DID 所有权。
+    *   `destroyDidCell`: 销毁 DID。
 
-### 3.3 PDS Module (Remote)
-*   **定位**: 纯逻辑与组件库，通过 Module Federation 暴露。
-*   **Exports**:
-    *   `logic`: `Web5Client`, `Record.write`, `Record.read` 等函数。
-    *   `components`: (可选) `<FileTree />` 等展示型组件。
-*   **使用场景**: Console 导入此模块，在“我的数据”页面展示用户在 PDS 上的数据文件。
+### 3.3 PDS Module
+*   **功能**: 封装 Web5/AtProto 协议交互逻辑，实现去中心化数据存储。
+*   **Exposes**:
+    *   `./logic`: 核心逻辑函数。
+    *   `./constants`: 提供 `AVAILABLE_PDS` 列表。
+*   **主要 API**:
+    *   `pdsCreateAccount`: 在 PDS 注册新账户。
+    *   `pdsLogin`: 登录 PDS 获取 Session。
+    *   `writePDS`: 向用户的 PDS 写入数据记录。
+    *   `fetchUserProfile`: 获取用户 Profile。
 
-### 3.4 Console (Demo Host)
-*   **功能实现**:
-    *   **密钥管理**: 调用 `KeystoreClient.connect()` 获取用户 DID Key，以及签名，验签等操作。
-    *   **DID 管理**: 展示 DID的创建和管理（transfer/update/destroy）操作。
-    *   **数据读写**: 提供一个简单的表单（如“记事本”），调用 `PDS Module` 将数据写入用户的 DWN/PDS，并读取列表展示。
+## 4. 开发指南：如何开发新的 Host App
 
-## 4. 目录结构 (Monorepo)
+如果您想开发一个新的应用（Host App）并复用这些模块，请遵循以下步骤：
+
+### 4.1 配置 Module Federation
+在您的 Vite 配置文件 (`vite.config.ts`) 中配置 `remotes`：
+
+```typescript
+import federation from '@originjs/vite-plugin-federation'
+
+export default defineConfig({
+  plugins: [
+    federation({
+      name: 'my_new_app',
+      remotes: {
+        // 指向各个模块的 remoteEntry.js
+        keystore: 'http://localhost:3001/assets/remoteEntry.js',
+        did_module: 'http://localhost:3002/assets/remoteEntry.js',
+        pds_module: 'http://localhost:3003/assets/remoteEntry.js',
+      },
+      // 共享依赖配置
+      // 必须共享: @ckb-ccc/ccc web5-api (如果 Host 和 Remote 都依赖它且传递对象)
+      shared: ['@ckb-ccc/ccc', 'web5-api']
+    })
+  ]
+})
+```
+
+> **注意**:
+> 1. 在开发模式 (`npm run dev`) 下，Vite 可能无法直接加载远程生产构建的模块。建议远程模块使用 `npm run preview` 运行，或者在 Host 端配置适当的代理。
+> 2. **共享依赖**: 如果您的 Host App 和 Remote Module 都使用了同一个库（如 `@ckb-ccc/ccc`），并且需要在两者之间传递由该库创建的对象，请务必将其加入 `shared` 列表，以确保单例一致性。
+
+### 4.2 类型定义
+创建 `src/remotes.d.ts` 以获得 TypeScript 类型支持：
+
+```typescript
+declare module 'keystore/KeystoreClient' {
+    export class KeystoreClient {
+        constructor(bridgeUrl: string);
+        connect(): Promise<void>;
+        signMessage(message: Uint8Array): Promise<Uint8Array>;
+        // ...
+    }
+}
+
+declare module 'did_module/logic' {
+    export function buildCreateTransaction(...): Promise<...>;
+    // ...
+}
+
+declare module 'pds_module/constants' {
+    export const AVAILABLE_PDS: string[];
+}
+
+// ... 其他模块声明
+```
+
+### 4.3 集成 Keystore
+使用远程提供的 `KeystoreClient` 连接钱包：
+
+```typescript
+// 从远程模块导入
+import { KeystoreClient } from 'keystore/KeystoreClient';
+import { KEY_STORE_BRIDGE_URL } from 'keystore/constants';
+
+const client = new KeystoreClient(KEY_STORE_BRIDGE_URL);
+await client.connect();
+const didKey = await client.getDIDKey();
+```
+
+### 4.4 调用业务逻辑
+直接调用远程模块的函数，就像调用本地库一样：
+
+```typescript
+import { buildCreateTransaction } from 'did_module/logic';
+
+const {rawTx, did} = await buildCreateTransaction(signer, metadata);
+```
+
+## 5. 目录结构
 
 ```text
 web5fans/
 ├── modules/
-│   ├── packages/
-│   │   ├── sdk-bridge/    # Keystore 通信客户端 (npm包)
-│   │   └── types/         # 全局类型定义
 │   ├── apps/
-│   │   ├── keystore/      # [App] 独立钱包应用
-│   │   ├── console/       # [App] 宿主控制台
-│   │   ├── did/           # [Remote] DID 模块提供者
-│   │   └── pds/           # [Remote] PDS 模块提供者
-│   └── pnpm-workspace.yaml
+│   │   ├── keystore/      # [Provider] 钱包应用 & SDK
+│   │   ├── console/       # [Host] 演示应用
+│   │   ├── did/           # [Remote] DID 逻辑模块
+│   │   └── pds/           # [Remote] PDS 逻辑模块
+│   ├── package.json       # Root config
+│   └── turbo.json         # TurboRepo config
 ```
-
-## 5. 开发路线图
-1.  **Monorepo Setup**: 配置 pnpm workspace 和 TurboRepo (可选)。
-2.  **Keystore Core**: 实现密钥生成与存储，开发 Wallet UI。
-3.  **Bridge Mechanism**: 实现 Console <-> Keystore 的 iframe 通信。
-4.  **Remote Modules**: 配置 Vite Module Federation，导出 DID/PDS 基础函数。
-5.  **Console Integration**: 在 Console 中串联流程：登录 -> 拿DID -> 写数据。

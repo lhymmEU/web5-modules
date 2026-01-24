@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
+import federation from '@originjs/vite-plugin-federation'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,6 +15,15 @@ export default defineConfig({
         process: true,
       },
     }),
+    federation({
+      name: 'keystore',
+      filename: 'remoteEntry.js',
+      exposes: {
+        './KeystoreClient': './src/KeystoreClient.ts',
+        './constants': './src/constants.ts',
+      },
+      shared: []
+    })
   ],
   server: {
     host: '0.0.0.0',
@@ -29,6 +39,7 @@ export default defineConfig({
     'process.env': {},
   },
   build: {
+    target: 'esnext',
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),

@@ -8,7 +8,8 @@
     "dev:console": "pnpm --filter @web5-modules/console dev",
     "dev:keystore": "pnpm --filter @web5-modules/keystore dev",
     "dev:did": "pnpm --filter @web5-modules/did dev",
-    "dev:pds": "pnpm --filter @web5-modules/pds dev"
+    "dev:pds": "pnpm --filter @web5-modules/pds dev",
+    "preview": "turbo run preview --parallel"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.23",

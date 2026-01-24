@@ -4,7 +4,7 @@ import { Server, Loader, LogIn, LogOut, AlertTriangle, Shield, Edit2, Save, X } 
 import { useKeystore } from '../contexts/KeystoreContext';
 import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
-import { pdsLogin, fetchUserProfile, writePDS, type PostRecordType, type sessionInfo, getDidByUsername } from '../utils/pds';
+import { pdsLogin, fetchUserProfile, writePDS, type PostRecordType, type sessionInfo, getDidByUsername } from 'pds_module/logic';
 
 export function PdsManager() {
   const { wallet } = ccc.useCcc();

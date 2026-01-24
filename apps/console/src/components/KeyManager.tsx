@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { Check, AlertCircle, Shield, PenTool, CheckCircle } from 'lucide-react';
-import { bytesFrom, hexFrom } from '@ckb-ccc/core';
+import { bytesFrom, hexFrom } from '@ckb-ccc/ccc';
 
 export function KeyManager() {
   const { client, connected } = useKeystore();
