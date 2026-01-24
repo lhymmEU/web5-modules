@@ -4,6 +4,7 @@ import { CID } from "multiformats";
 import { TID } from '@atproto/common-web'
 import * as cbor from "@ipld/dag-cbor";
 import { bytesFrom, bytesTo, hexFrom } from "@ckb-ccc/connector-react";
+import type { KeystoreClient } from "./KeystoreClient";
 
 export function checkUsernameFormat(username: string): boolean {
   // username will be domain so it must follow the rules of domain name
@@ -39,46 +40,6 @@ export async function getDidByUsername(username: string, pdsAPIUrl: string): Pro
   }
 }
 
-export async function pdsPreCreateAccount(username: string, pdsAPIUrl: string, didKey: string, did: string): Promise<FansWeb5CkbPreCreateAccount.OutputSchema | null> {
-  try {
-    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
-    // username in pds is lowercase
-    const handle = `${username.toLowerCase()}.${pdsAPIUrl}`;
-    const res = await agent.fans.web5.ckb.preCreateAccount({
-      handle,
-      signingKey: didKey,
-      did,
-    })
-    if (res.success) {
-      return res.data;
-    } else {
-      return null;
-    }
-  } catch (e: unknown) {
-    console.error(e);
-    return null;
-  }
-} 
-
-export function buildPreCreateSignData(preCreateResult: FansWeb5CkbPreCreateAccount.OutputSchema) : Uint8Array | null {
-  const uncommit: UnsignedCommit = {
-    did: preCreateResult.did,
-    version: 3,
-    rev: preCreateResult.rev,
-    prev: null, // added for backwards compatibility with v2
-    data: CID.parse(preCreateResult.data),
-  }
-
-  const encoded = cbor.encode(uncommit)
-  // remove 0x prefix
-  const unSignBytesHex = hexFrom(encoded).slice(2);
-  if (unSignBytesHex !== preCreateResult.unSignBytes) {
-    console.error('sign bytes not consistent', unSignBytesHex, preCreateResult.unSignBytes);
-    return null;
-  }
-  return encoded;
-  // const sig = await keyPair.sign(encoded)
-}
 
 export type userInfo = {
     accessJwt: string;
@@ -88,45 +49,82 @@ export type userInfo = {
     did: string;
 }
 
-export async function pdsCreateAccount(preCreateResult: FansWeb5CkbPreCreateAccount.OutputSchema, sig: Uint8Array, username: string, pdsAPIUrl: string, didKey: string, ckbAddr: string) : Promise<userInfo | null> {
-  const handle = `${username.toLowerCase()}.${pdsAPIUrl}`;
-  
-  const params = {
-    handle,
-    password: "", // unused
-    signingKey: didKey,
-    ckbAddr,
-    root: {
-      did: preCreateResult.did,
-      version: 3,
-      rev: preCreateResult.rev,
-      prev: preCreateResult.prev,
-      data: preCreateResult.data,
-      signedBytes: hexFrom(sig),
-    },
-  }
+export async function pdsCreateAccount(agent: AtpAgent, pdsAPIUrl: string, username: string, didKey: string, did: string, ckbAddr: string, keyStoreClient: KeystoreClient): Promise<userInfo | null> {
+  try {
+    // username in handle is lowercase
+    const handle = `${username.toLowerCase()}.${pdsAPIUrl}`;
+    const res = await agent.fans.web5.ckb.preCreateAccount({
+      handle,
+      signingKey: didKey,
+      did,
+    })
+    if (res.success) {
+      const uncommit: UnsignedCommit = {
+        did: res.data.did,
+        version: 3,
+        rev: res.data.rev,
+        prev: null, // added for backwards compatibility with v2
+        data: CID.parse(res.data.data),
+      }
 
-  const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
-  const createRes = await agent.web5CreateAccount(params)
-  if (createRes.success) {
-    // add didMetadata to userInfo
-    const userInfo: userInfo = {
-      accessJwt: createRes.data.accessJwt,
-      refreshJwt: createRes.data.refreshJwt,
-      handle: createRes.data.handle,
-      did: createRes.data.did
+      const encoded = cbor.encode(uncommit)
+      // remove 0x prefix
+      const unSignBytesHex = hexFrom(encoded).slice(2);
+      if (unSignBytesHex !== res.data.unSignBytes) {
+        console.error('sign bytes not consistent', unSignBytesHex, res.data.unSignBytes);
+        return null;
+      }
+
+      // sign the encoded data
+      const sig = await keyStoreClient.signMessage(encoded);
+      if (!sig) {
+        console.error('sign failed');
+        return null;
+      }
+
+      const params = {
+        handle,
+        password: "", // unused
+        signingKey: didKey,
+        ckbAddr,
+        root: {
+          did: res.data.did,
+          version: 3,
+          rev: res.data.rev,  
+          prev: res.data.prev,
+          data: res.data.data,
+          signedBytes: hexFrom(sig),
+        },
+      }
+
+      const createRes = await agent.web5CreateAccount(params)
+      if (createRes.success) {
+        // add didMetadata to userInfo
+        const userInfo: userInfo = {
+          accessJwt: createRes.data.accessJwt,
+          refreshJwt: createRes.data.refreshJwt,
+          handle: createRes.data.handle,
+          did: createRes.data.did
+        }
+        return userInfo;
+      } else {
+        console.error('create account failed', createRes);
+        return null;
+      }
+    } else {
+      console.error('pre create account failed', res);
+      return null;
     }
-    return userInfo;
-  } else {
-    console.error('create account failed', createRes);
+  } catch (e: unknown) {
+    console.error(e);
     return null;
   }
 }
 
 
-export async function pdsPreDeleteAccount(did: string, ckbAddr: string, pdsAPIUrl: string): Promise<Uint8Array | null> {
+export async function pdsDeleteAccount(agent: AtpAgent, did: string, ckbAddr: string, didKey: string, keyStoreClient: KeystoreClient): Promise<boolean | null> {
   try {
-    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+    // pre delete account
     const preDelectIndex = {
       $type: 'fans.web5.ckb.preIndexAction#deleteAccount' as const,
     }
@@ -137,25 +135,23 @@ export async function pdsPreDeleteAccount(did: string, ckbAddr: string, pdsAPIUr
       index: preDelectIndex,
     })
     console.log('pre delete account params', preDelete);
-    return bytesFrom(preDelete.data.message, 'utf8');
-  } catch (e: unknown) {
-    console.error(e);
-    return null;
-  }
-}
+    const deleteMessage = bytesFrom(preDelete.data.message, 'utf8');
+  
+    // sign the delete message
+    const sig = await keyStoreClient.signMessage(deleteMessage);
+    if (!sig) {
+      console.error('sign failed');
+      return null;
+    }
 
-export async function pdsDeleteAccount(did: string, ckbAddr: string, didKey: string, pdsAPIUrl: string, deleteMessage: Uint8Array, sig: Uint8Array): Promise<boolean | null> {
-  try {
-    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+    // delete account
     const deleteIndex = {
       $type: 'fans.web5.ckb.indexAction#deleteAccount' as const,
     }
 
-    const deleteMessageStr = bytesTo(deleteMessage, 'utf8');
-    console.log('delete message str', deleteMessageStr);
     const deleteInfo = await agent.fans.web5.ckb.indexAction({
       did,
-      message: deleteMessageStr,
+      message: preDelete.data.message,
       signingKey: didKey,
       signedBytes: hexFrom(sig),
       ckbAddr,
@@ -164,6 +160,7 @@ export async function pdsDeleteAccount(did: string, ckbAddr: string, didKey: str
     if (deleteInfo.success) {
       return true;
     } else {
+      console.error('delete account failed', deleteInfo);
       return false;
     }
   } catch (e: unknown) {
@@ -172,24 +169,6 @@ export async function pdsDeleteAccount(did: string, ckbAddr: string, didKey: str
   }
 }
 
-export async function pdsPreLogin(did: string, pdsAPIUrl: string, ckbAddr: string): Promise<Uint8Array | null> {
-  const preLoginIndex = {
-    $type: 'fans.web5.ckb.preIndexAction#createSession' as const,
-  }
-
-  try {
-    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
-    const preLogin = await agent.fans.web5.ckb.preIndexAction({
-      did,
-      ckbAddr,
-      index: preLoginIndex,
-    })
-    return bytesFrom(preLogin.data.message, 'utf8');
-  } catch (err: unknown) {
-    console.error(err);
-    return null;
-  }
-}
 
 export type sessionInfo = {
   accessJwt: string;
@@ -199,17 +178,32 @@ export type sessionInfo = {
   didMetadata: string;
 }
 
-export async function pdsLogin(did: string, pdsAPIUrl: string, didKey: string, ckbAddr: string, preLoginMessage: Uint8Array, sig: Uint8Array): Promise<sessionInfo | null> {
+export async function pdsLogin(agent: AtpAgent, did: string, didKey: string, ckbAddr: string, keyStoreClient: KeystoreClient): Promise<sessionInfo | null> {
+  const preLoginIndex = {
+    $type: 'fans.web5.ckb.preIndexAction#createSession' as const,
+  }
+
   const loginIndex = {
     $type: 'fans.web5.ckb.indexAction#createSession' as const,
   }
 
   try {
-    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
+    const preLogin = await agent.fans.web5.ckb.preIndexAction({
+      did,
+      ckbAddr,
+      index: preLoginIndex,
+    })
+    const preLoginMessage = bytesFrom(preLogin.data.message, 'utf8');
+
+    const sig = await keyStoreClient.signMessage(preLoginMessage);
+    if (!sig) {
+      console.error('sign failed');
+      return null;
+    }
 
     const loginInfo = await agent.web5Login({
       did,
-      message: bytesTo(preLoginMessage, 'utf8'),
+      message: preLogin.data.message,
       signingKey: didKey,
       signedBytes: hexFrom(sig),
       ckbAddr,
@@ -272,16 +266,15 @@ type PostRecordType = {
   [key: string]: string | number | boolean | null | undefined;
 };
 
-export async function preWritePDS(pdsAPIUrl: string, accessJwt: string, params: {
+export async function writePDS(agent: AtpAgent, accessJwt: string, didKey: string, keyStoreClient: KeystoreClient, params: {
   record: PostRecordType
   did: string
-  rkey?: string
+  rkey: string
   type?: 'update' | 'create'
-}): Promise<{writerData: FansWeb5CkbPreDirectWrites.OutputSchema, rkey: string, newRecord: PostRecordType} | null> {
+}): Promise<boolean | null> {
   try {
     const operateType = params.type || 'create'
-    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
-    agent.api.xrpc.setHeader('Authorization', `Bearer ${accessJwt}`);
+    agent.setHeader('Authorization', `Bearer ${accessJwt}`);
 
     const rkey = params.rkey || TID.next().toString()
 
@@ -290,15 +283,15 @@ export async function preWritePDS(pdsAPIUrl: string, accessJwt: string, params: 
       ...params.record,
     }
 
-    const $typeMap = {
+    const preWriteTypeMap = {
       create: "fans.web5.ckb.preDirectWrites#create" as const,
       update: "fans.web5.ckb.preDirectWrites#update" as const,
     }
 
-    const writeRes = await agent.fans.web5.ckb.preDirectWrites({
+    const preWriteRes = await agent.fans.web5.ckb.preDirectWrites({
       repo: params.did,
       writes: [{
-        $type: $typeMap[operateType],
+        $type: preWriteTypeMap[operateType],
         collection: newRecord.$type,
         rkey,
         value: newRecord
@@ -306,73 +299,52 @@ export async function preWritePDS(pdsAPIUrl: string, accessJwt: string, params: 
       validate: false,
     });
 
-    const writerData = writeRes.data
+    const preWriterData = preWriteRes.data;
 
-    return {writerData, rkey, newRecord};
-    
-  } catch (err: unknown) {
-    console.error(err);
-    return null;
-  }
-}
+    const uncommit: UnsignedCommit = {
+      did: preWriterData.did,
+      version: 3,
+      rev: preWriterData.rev,
+      prev: preWriterData.prev ? CID.parse(preWriterData.prev) : null,
+      data: CID.parse(preWriterData.data),
+    };
+    const unSignBytes = cbor.encode(uncommit)
+    // remove 0x prefix
+    const unSignBytesHex = hexFrom(unSignBytes).slice(2);
+    if (unSignBytesHex !== preWriterData.unSignBytes) {
+      console.error('sign bytes not consistent', unSignBytesHex, preWriterData.unSignBytes)
+      return null;
+    }
 
-export function buildWriteSignData(writerData: FansWeb5CkbPreDirectWrites.OutputSchema): Uint8Array | null {
-  const uncommit: UnsignedCommit = {
-    did: writerData.did,
-    version: 3,
-    rev: writerData.rev,
-    prev: writerData.prev ? CID.parse(writerData.prev) : null,
-    data: CID.parse(writerData.data),
-  };
-  const unSignBytes = cbor.encode(uncommit)
-  // remove 0x prefix
-  const unSignBytesHex = hexFrom(unSignBytes).slice(2);
-  if (unSignBytesHex !== writerData.unSignBytes) {
-    console.error('sign bytes not consistent', unSignBytesHex, writerData.unSignBytes)
-    return null;
-  }
-  return unSignBytes;
-  // const sig = await keyPair.sign(unSignBytes)
-}
+    const sig = await keyStoreClient.signMessage(unSignBytes);
 
-export async function writePDS(pdsAPIUrl: string, accessJwt: string, didKey: string, writerData: FansWeb5CkbPreDirectWrites.OutputSchema, newRecord: PostRecordType, sig: Uint8Array, params: {
-  record: PostRecordType
-  did: string
-  rkey: string
-  type?: 'update' | 'create'
-}): Promise<FansWeb5CkbDirectWrites.OutputSchema | null> {
-  try {
-    const agent = new AtpAgent({ service: `https://${pdsAPIUrl}` });
-    agent.api.xrpc.setHeader('Authorization', `Bearer ${accessJwt}`);
-
-    const $typeMap = {
+    const writeTypeMap = {
       create: "fans.web5.ckb.directWrites#create" as const,
       update: "fans.web5.ckb.directWrites#update" as const,
       delete: "fans.web5.ckb.directWrites#delete" as const,
     }
-    const operateType = params.type || 'create'
 
     const writeRes = await agent.fans.web5.ckb.directWrites({
       repo: params.did,
       validate: false,
       signingKey: didKey,
       writes: [{
-        $type: $typeMap[operateType],
+        $type: writeTypeMap[operateType],
         collection: newRecord.$type,
         rkey: params.rkey,
         value: newRecord
       }],
       root: {
-        did: writerData.did,
+        did: preWriterData.did,
         version: 3,
-        rev: writerData.rev,
-        prev: writerData.prev,
-        data: writerData.data,
+        rev: preWriterData.rev,
+        prev: preWriterData.prev,
+        data: preWriterData.data,
         signedBytes: hexFrom(sig),
-    },
+      },
     });
 
-    return writeRes.data;
+    return writeRes.success;
   } catch (err: unknown) {
     console.error(err);
     return null;

@@ -13,7 +13,7 @@ import {
   updateDidKey,
   updateAka
 } from '../utils/didCKB';
-import { getDidByUsername, checkUsernameFormat, pdsPreCreateAccount, buildPreCreateSignData, pdsCreateAccount, type userInfo, pdsPreDeleteAccount, pdsDeleteAccount } from '../utils/pds';
+import { getDidByUsername, checkUsernameFormat, type userInfo, pdsDeleteAccount, pdsCreateAccount } from '../utils/pds';
 
 import { usePds } from '../contexts/PdsContext';
 
@@ -158,7 +158,7 @@ export function DidManager() {
   const { wallet } = ccc.useCcc();
   const signer = ccc.useSigner();
   const { didKey, client } = useKeystore();
-  const { pdsUrl: pdsAddress } = usePds();
+  const { agent, pdsUrl: pdsAddress } = usePds();
   
   const [address, setAddress] = useState<string>('');
 
@@ -289,8 +289,8 @@ export function DidManager() {
   const [deleteError, setDeleteError] = useState('');
 
   const handleDeletePdsAccount = async () => {
-    if (!deletePdsDid || !address || !didKey || !pdsAddress) {
-      setDeleteError('Missing required info (DID to delete, CKB Address, DID Key, or PDS Address)');
+    if (!deletePdsDid || !address || !didKey || !pdsAddress || !agent) {
+      setDeleteError('Missing required info (DID to delete, CKB Address, DID Key, PDS Address, or Agent)');
       setDeleteStatus('error');
       return;
     }
@@ -301,31 +301,19 @@ export function DidManager() {
     setDeleteError('');
 
     try {
-      // 1. Pre-delete (get message to sign)
-      const messageToSign = await pdsPreDeleteAccount(deletePdsDid, address, pdsAddress);
-      if (!messageToSign) {
-        throw new Error('Failed to prepare delete account');
-      }
-
-      // 2. Sign with Keystore
       if (!client) {
         throw new Error('Keystore client not connected');
       }
 
-      const sig = await client.signMessage(messageToSign);
-      
-      if (!sig) {
-        throw new Error('Failed to sign message');
-      }
-
       // 3. Delete account
-      const success = await pdsDeleteAccount(deletePdsDid, address, didKey, pdsAddress, messageToSign, sig);
+      const success = await pdsDeleteAccount(agent, deletePdsDid, address, didKey, client);
       
       if (success) {
         setDeleteStatus('success');
         setDeletePdsDid(''); // Clear input on success
       } else {
-        throw new Error('Failed to delete PDS account');
+        setDeleteError('Failed to delete PDS account');
+        setDeleteStatus('error');
       }
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : String(e));
@@ -339,8 +327,8 @@ export function DidManager() {
   const [registeredUserInfo, setRegisteredUserInfo] = useState<userInfo | null>(null);
 
   const handleRegisterPds = async () => {
-    if (!generatedDid || !didKey || !pdsUsername || !pdsAddress || !address) {
-      setRegisterError('Missing required information (DID, DID Key, Username, PDS Address, or CKB Address)');
+    if (!generatedDid || !didKey || !pdsUsername || !pdsAddress || !address || !agent) {
+      setRegisterError('Missing required information (DID, DID Key, Username, PDS Address, CKB Address, or Agent)');
       setRegisterStatus('error');
       return;
     }
@@ -350,31 +338,11 @@ export function DidManager() {
     setRegisteredUserInfo(null);
 
     try {
-      // 1. Pre-create account
-      const preCreateResult = await pdsPreCreateAccount(pdsUsername, pdsAddress, didKey, generatedDid);
-      if (!preCreateResult) {
-        throw new Error('Failed to pre-create PDS account');
-      }
-
-      // 2. Build sign data
-      const signData = buildPreCreateSignData(preCreateResult);
-      if (!signData) {
-        throw new Error('Failed to build sign data');
-      }
-
-      // 3. Sign with Keystore
       if (!client) {
         throw new Error('Keystore client not connected');
       }
-      
-      const sig = await client.signMessage(signData);
-      
-      if (!sig) {
-        throw new Error('Failed to sign message');
-      }
-
-      // 4. Create account
-      const userInfo = await pdsCreateAccount(preCreateResult, sig, pdsUsername, pdsAddress, didKey, address);
+      // Create account
+      const userInfo = await pdsCreateAccount(agent, pdsAddress, pdsUsername, didKey, generatedDid, address, client);
       
       if (userInfo) {
         setRegisteredUserInfo(userInfo);

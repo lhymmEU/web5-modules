@@ -1,8 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { AVAILABLE_PDS } from '../constants/pds';
+import { AtpAgent } from 'web5-api';
 
 interface PdsContextType {
+  agent: AtpAgent | null;
   pdsUrl: string;
   setPdsUrl: (url: string) => void;
   availablePds: string[];
@@ -15,12 +17,22 @@ export function PdsProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem('web5_console_pds_url') || AVAILABLE_PDS[0];
   });
 
+  const [agent, setAgent] = useState<AtpAgent | null>(null);
+
   useEffect(() => {
     localStorage.setItem('web5_console_pds_url', pdsUrl);
+    try {
+      const serviceUrl = pdsUrl.startsWith('http') ? pdsUrl : `https://${pdsUrl}`;
+      const newAgent = new AtpAgent({ service: serviceUrl });
+      setAgent(newAgent);
+    } catch (e) {
+      console.error('Failed to initialize AtpAgent', e);
+      setAgent(null);
+    }
   }, [pdsUrl]);
 
   return (
-    <PdsContext.Provider value={{ pdsUrl, setPdsUrl, availablePds: AVAILABLE_PDS }}>
+    <PdsContext.Provider value={{ agent, pdsUrl, setPdsUrl, availablePds: AVAILABLE_PDS }}>
       {children}
     </PdsContext.Provider>
   );

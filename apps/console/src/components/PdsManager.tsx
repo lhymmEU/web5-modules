@@ -3,13 +3,13 @@ import { Server, Loader, LogIn, AlertTriangle, Shield, User, Users, FileText, Ed
 import { useKeystore } from '../contexts/KeystoreContext';
 import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
-import { pdsPreLogin, pdsLogin, fetchUserProfile, preWritePDS, buildWriteSignData, writePDS, type sessionInfo } from '../utils/pds';
+import { pdsLogin, fetchUserProfile, writePDS, type sessionInfo } from '../utils/pds';
 
 export function PdsManager() {
   const { wallet, open } = ccc.useCcc();
   const signer = ccc.useSigner();
   const { connected, didKey, client } = useKeystore();
-  const { pdsUrl } = usePds();
+  const { agent, pdsUrl } = usePds();
   
   // CKB Address State
   const [address, setAddress] = useState<string>('');
@@ -50,7 +50,7 @@ export function PdsManager() {
   }, [session, pdsUrl]);
 
   const handleSaveProfile = async () => {
-    if (!session || !pdsUrl || !didKey || !client) return;
+    if (!session || !pdsUrl || !didKey || !client || !agent) return;
     
     setSaving(true);
     try {
@@ -66,32 +66,12 @@ export function PdsManager() {
              if (userProfile.banner) record.banner = userProfile.banner;
         }
 
-        // 1. Pre-write
-        const preWriteResult = await preWritePDS(pdsUrl, session.accessJwt, {
+        const writeResult = await writePDS(agent, session.accessJwt, didKey, client, {
             record,
             did: session.did,
             rkey: 'self',
             type: userProfile ? 'update' : 'create'
         });
-        
-        if (!preWriteResult) throw new Error('Pre-write failed');
-
-        // 2. Sign
-        const signBytes = buildWriteSignData(preWriteResult.writerData);
-        if (!signBytes) throw new Error('Failed to build sign data');
-        
-        const sig = await client.signMessage(signBytes);
-        if (!sig) throw new Error('Failed to sign');
-
-        // 3. Write
-        const writeResult = await writePDS(pdsUrl, session.accessJwt, didKey, preWriteResult.writerData, preWriteResult.newRecord, sig, {
-            record,
-            did: session.did,
-            rkey: preWriteResult.rkey,
-            type: userProfile ? 'update' : 'create'
-        });
-
-        console.log('Write result:', writeResult);
 
         if (writeResult) {
             // Refresh profile
@@ -129,8 +109,8 @@ export function PdsManager() {
   }, [signer]);
 
   const handleLogin = async () => {
-    if (!did || !pdsUrl || !address || !didKey) {
-      setLoginError('Missing required info (DID, PDS URL, CKB Address, or DID Key)');
+    if (!did || !pdsUrl || !address || !didKey || !agent) {
+      setLoginError('Missing required info (DID, PDS URL, CKB Address, DID Key, or Agent)');
       setLoginStatus('error');
       return;
     }
@@ -146,21 +126,7 @@ export function PdsManager() {
     setSession(null);
 
     try {
-      // 1. Pre-login (get message to sign)
-      const messageToSign = await pdsPreLogin(did, pdsUrl, address);
-      if (!messageToSign) {
-        throw new Error('Failed to prepare login');
-      }
-
-      // 2. Sign with Keystore
-      const sig = await client.signMessage(messageToSign);
-      
-      if (!sig) {
-        throw new Error('Failed to sign message');
-      }
-
-      // 3. Login
-      const sessionInfo = await pdsLogin(did, pdsUrl, didKey, address, messageToSign, sig);
+      const sessionInfo = await pdsLogin(agent, did, didKey, address, client);
       
       if (sessionInfo) {
         setSession(sessionInfo);
