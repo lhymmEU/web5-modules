@@ -1,6 +1,3 @@
-// for dev
-export const KEY_STORE_URL = 'http://localhost:3001';
-export const KEY_STORE_BRIDGE_URL = 'http://localhost:3001/bridge.html';
-// for prod
-// export const KEY_STORE_URL = 'https://keystore.web5.fans';
-// export const KEY_STORE_BRIDGE_URL = 'https://keystore.web5.fans/bridge.html';
+// Use environment variables or fallback to local dev defaults
+export const KEY_STORE_URL = import.meta.env.VITE_KEYSTORE_URL || 'http://localhost:3001';
+export const KEY_STORE_BRIDGE_URL = `${KEY_STORE_URL}/bridge.html`;

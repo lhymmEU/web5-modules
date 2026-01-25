@@ -192,3 +192,17 @@ web5fans/
 │   ├── package.json       # Root config
 │   └── turbo.json         # TurboRepo config
 ```
+
+## 6. 运维与部署策略
+
+### 6.1 部署架构 (Vercel/Netlify)
+建议使用 Vercel 等 Monorepo 原生支持的平台。
+*   **Keystore**: 部署为 `keystore.web5.fans`。必须配置 HTTPS，且作为独立 Origin 运行以保护 LocalStorage。
+*   **Console**: 部署为 `console.web5.fans`。
+*   **Modules**: 部署为 `did.web5.fans`, `pds.web5.fans`。
+
+### 6.2 版本管理与兼容性
+*   **滚动更新 (Rolling)**: 推荐 Remote 模块保持接口向后兼容，部署后 Host App 即时生效。
+*   **Feature Preview**:
+    *   利用 Vercel 的 PR Preview 功能，为 `bugfix/xxx` 分支自动生成临时域名。
+    *   开发时可通过 URL 参数或环境变量，让 Host App 指向 Preview 版的 Remote URL。

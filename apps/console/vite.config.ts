@@ -1,30 +1,40 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import federation from '@originjs/vite-plugin-federation'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    federation({
-      name: 'console_host',
-      remotes: {
-        did_module: 'http://localhost:3002/assets/remoteEntry.js',
-        pds_module: 'http://localhost:3003/assets/remoteEntry.js',
-        keystore: 'http://localhost:3001/assets/remoteEntry.js',
-      },
-      shared: ['@ckb-ccc/ccc', 'web5-api']
-    })
-  ],
-  server: {
-    port: 3000,
-    strictPort: true,
-  },
-  preview: {
-    port: 3000,
-    strictPort: true,
-  },
-  build: {
-    target: 'esnext'
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+  const env = loadEnv(mode, process.cwd(), '')
+
+  const DID_MODULE_URL = env.DID_MODULE_URL || 'http://localhost:3002/assets/remoteEntry.js';
+  const PDS_MODULE_URL = env.PDS_MODULE_URL || 'http://localhost:3003/assets/remoteEntry.js';
+  const KEYSTORE_MODULE_URL = env.KEYSTORE_MODULE_URL || 'http://localhost:3001/assets/remoteEntry.js';
+
+  return {
+    plugins: [
+      react(),
+      federation({
+        name: 'console_host',
+        remotes: {
+          did_module: DID_MODULE_URL,
+          pds_module: PDS_MODULE_URL,
+          keystore: KEYSTORE_MODULE_URL,
+        },
+        shared: ['@ckb-ccc/ccc', 'web5-api']
+      })
+    ],
+    server: {
+      port: 3000,
+      strictPort: true,
+    },
+    preview: {
+      port: 3000,
+      strictPort: true,
+    },
+    build: {
+      target: 'esnext'
+    }
   }
 })
