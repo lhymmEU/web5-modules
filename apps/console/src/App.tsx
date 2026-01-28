@@ -5,6 +5,7 @@ import { Layout } from './Layout';
 import { KeyManagerPage } from './pages/KeyManagerPage';
 import { DidManagerPage } from './pages/DidManagerPage';
 import { PdsManagerPage } from './pages/PdsManagerPage';
+import { PdsBrowserPage } from './pages/PdsBrowserPage';
 import { KeystoreProvider } from './contexts/KeystoreContext';
 import { PdsProvider } from './contexts/PdsContext';
 
@@ -19,6 +20,7 @@ function App() {
               <Route path="keys" element={<KeyManagerPage />} />
               <Route path="dids" element={<DidManagerPage />} />
               <Route path="pds" element={<PdsManagerPage />} />
+              <Route path="browser" element={<PdsBrowserPage />} />
             </Route>
           </Routes>
         </PdsProvider>

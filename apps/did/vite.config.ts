@@ -10,7 +10,11 @@ export default defineConfig({
       exposes: {
         './logic': './src/logic.ts',
       },
-      shared: ['@ckb-ccc/ccc']
+      shared: {
+        '@ckb-ccc/ccc': {
+          version: '0.0.0-canary-20260109065952'
+        }
+      }
     })
   ],
   server: {

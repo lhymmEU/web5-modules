@@ -156,6 +156,12 @@ export function Layout() {
         >
           PDS Manager
         </Link>
+        <Link 
+          to="/browser" 
+          className={`nav-link ${location.pathname === '/browser' ? 'active' : ''}`}
+        >
+          PDS Browser
+        </Link>
       </nav>
 
       <div className="content-area">

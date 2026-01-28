@@ -377,3 +377,227 @@ export async function writePDS(agent: AtpAgent, accessJwt: string, didKey: strin
     return null;
   }
 }
+
+/*
+$ curl -s "https://web5.bbsfans.dev/xrpc/com.atproto.repo.describeRepo?repo=did:ckb:ctjbk5hh2oidglaw23lp37dglicta2tk" | jq
+{
+  "handle": "david.web5.bbsfans.dev",
+  "did": "did:ckb:ctjbk5hh2oidglaw23lp37dglicta2tk",
+  "didDoc": {
+    "verificationMethods": {
+      "atproto": "did:key:zQ3shnekMFK6a6kS9sCeLATJjjbMzSsoHuCiGsTBnDSvEWiqC"
+    },
+    "alsoKnownAs": [
+      "at://david.web5.bbsfans.dev"
+    ],
+    "services": {
+      "atproto_pds": {
+        "type": "AtprotoPersonalDataServer",
+        "endpoint": "https://web5.bbsfans.dev"
+      }
+    }
+  },
+  "collections": [
+    "app.actor.profile",
+    "app.bsky.actor.profile",
+    "app.bsky.feed.post",
+    "app.bsky.graph.follow"
+  ],
+  "handleIsCorrect": true
+}
+*/
+
+export async function fetchRepoInfo(did: string, pdsAPIUrl: string): Promise<any | null> {
+  try {
+    const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.describeRepo`);
+    url.searchParams.append('repo', did);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json; charset=utf-8',
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch repo info: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('repo info data', data);
+    return data;
+  } catch (e) {
+    console.error('fetchRepoInfo error:', e);
+    return null;
+  }
+}
+
+/*
+curl -s "https://web5.bbsfans.dev/xrpc/com.atproto.repo.listRecords?repo=did:ckb:ctjbk5hh2oidglaw23lp37dglicta2tk&collection=app.actor.profile&limit=100"
+{
+    "cursor": "self",
+    "records": [
+        {
+            "uri": "at://did:ckb:ctjbk5hh2oidglaw23lp37dglicta2tk/app.actor.profile/self",
+            "cid": "bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di",
+            "value": {
+                "uri": "at://did:ckb:ctjbk5hh2oidglaw23lp37dglicta2tk/app.actor.profile/self",
+                "cid": "bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di",
+                "value": {
+                    "$type": "app.actor.profile",
+                    "created": "2026-01-24T05:45:13.859Z",
+                    "description": "哈哈哈哈",
+                    "displayName": "david111"
+                }
+            }
+        }
+    ]
+}
+next page by cursor:
+$ curl -s "https://bsky.social/xrpc/com.atproto.repo.listRecords?repo=did:plc:pzeifei2oec4vx5a35py4knv&collection=app.bsky.feed.post&cursor=3ltlqcmqdk225"
+{"records":[]}
+*/
+
+export async function fetchRepoRecords(did: string, collection: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<any | null> {
+  try {
+    const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.listRecords`);
+    url.searchParams.append('repo', did);
+    url.searchParams.append('collection', collection);
+    url.searchParams.append('limit', limit?.toString() || '10'); 
+    if (cursor) {
+      url.searchParams.append('cursor', cursor);
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json; charset=utf-8',
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch repo records: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error('fetchRepoRecords error:', e);
+    return null;
+  }
+}
+
+/*
+web5 pds (rsky) does not use blobs; images and similar assets are stored in OSS, and only their URLs are kept in the PDS.
+curl -s 'https://agrocybe.us-west.host.bsky.network/xrpc/com.atproto.sync.listBlobs?did=did%3Aplc%3Apzeifei2oec4vx5a35py4knv&limit=1000'
+{"cursor":"bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di","cids":["bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di"]}
+pic url： https://agrocybe.us-west.host.bsky.network/xrpc/com.atproto.sync.getBlob?did=did:plc:pzeifei2oec4vx5a35py4knv&cid=bafkreif52ptsjaiclntwv4p3squl3yus5tlkac45zxjsbnmupnocx6lmpq
+*/
+
+export async function fetchRepoBlobs(did: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<any | null> {
+  try {
+    const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.sync.listBlobs`);
+    url.searchParams.append('did', did);
+    url.searchParams.append('limit', limit?.toString() || '10');
+    if (cursor) {
+      url.searchParams.append('cursor', cursor);
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json; charset=utf-8',
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch repo blobs: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error('fetchRepoBlobs error:', e);
+    return null;
+  }
+}
+
+/*
+curl -L -o "repo_jler.car" "https://web5.bbsfans.dev/xrpc/com.atproto.sync.getRepo?did=did:ckb:52vmubyl4y3al5k246owb7nhkmwhwgx7"
+incremental car:
+curl -L -o "repo_jler_incremental.car" "https://web5.bbsfans.dev/xrpc/com.atproto.sync.getRepo?did=did:ckb:52vmubyl4y3al5k246owb7nhkmwhwgx7&since=bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di"
+ */
+export async function exportRepoCar(did: string, pdsAPIUrl: string, since?: string): Promise<any | null> {
+  try {
+    const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.sync.getRepo`);
+    url.searchParams.append('did', did);
+    if (since) {
+      url.searchParams.append('since', since);
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json; charset=utf-8',
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch repo car: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.arrayBuffer();
+    return data;
+  } catch (e) {
+    console.error('fetchRepoCar error:', e);
+    return null;
+  }
+}
+
+/*
+curl -X POST "$PDS_URL/xrpc/com.atproto.repo.importRepo" \
+     -H "Authorization: Bearer $ACCESS_TOKEN" \
+     -H "Content-Type: application/vnd.ipld.car" \
+     --data-binary @repo_jler.car
+*/
+
+export async function importRepoCar(did: string, pdsAPIUrl: string, car: ArrayBuffer, accessToken: string): Promise<any | null> {
+  try {
+    const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.importRepo`);
+    url.searchParams.append('did', did);
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/vnd.ipld.car',
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers,
+      body: car,
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to import repo car: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error('importRepoCar error:', e);
+    return null;
+  }
+}

@@ -14,7 +14,11 @@ export default defineConfig({
       remotes: {
         keystore: 'http://localhost:3001/assets/remoteEntry.js',
       },
-      shared: ['web5-api']
+      shared: {
+        'web5-api': {
+          version: '0.0.27'
+        }
+      }
     })
   ],
   server: {

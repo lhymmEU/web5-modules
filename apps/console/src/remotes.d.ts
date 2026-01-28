@@ -105,7 +105,13 @@ declare module 'did_module/logic' {
     ): Promise<sessionInfo | null>;
   
     export function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<string | null>;
+
+    export async function fetchRepoInfo(did: string, pdsAPIUrl: string): Promise<any | null>;
   
+    export function fetchRepoRecords(did: string, collection: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<any | null>;
+
+    export function exportRepoCar(did: string, pdsAPIUrl: string, since?: string): Promise<any | null>;
+
     export type PostRecordType = {
       $type: 'app.actor.profile'
       displayName: string;

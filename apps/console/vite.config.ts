@@ -22,7 +22,14 @@ export default defineConfig(({ mode }) => {
           pds_module: PDS_MODULE_URL,
           keystore: KEYSTORE_MODULE_URL,
         },
-        shared: ['@ckb-ccc/ccc', 'web5-api']
+        shared: {
+          '@ckb-ccc/ccc': {
+            version: '0.0.0-canary-20260109065952'
+          },
+          'web5-api': {
+            version: '0.0.27'
+          }
+        }
       })
     ],
     server: {
