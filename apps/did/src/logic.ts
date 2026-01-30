@@ -148,30 +148,41 @@ export async function updateDidKey(
   }
 }
 
-export async function updateAka(
+// update AKA and serviceEndpoint
+// handle like: david.web5.bbsfans.dev
+export async function updateHandle(
   signer: ccc.Signer,
   args: string,
-  aka: string
+  handle: string
 ): Promise<string> {
   try {
     const address = await signer.getRecommendedAddressObj();
-    const { tx: updateAkaTx } = await ccc.didCkb.transferDidCkb({
+    // serviceEndpoint like: https://web5.bbsfans.dev for handle is david.web5.bbsfans.dev
+    const parts = handle.split('.');
+    const pdsHost = parts.slice(1).join('.');
+    const serviceEndpoint = `https://${pdsHost}`;
+    const { tx: updateHandleTx } = await ccc.didCkb.transferDidCkb({
       client: signer.client,
       id: args,
       receiver: address.script,
       data: (_, data?: ccc.didCkb.DidCkbData) => {
         if (!data) throw new Error('data is undefined');
-        const akaObj = JSON.parse(aka);
+        // aka like: ["at://david.web5.bbsfans.dev"]
+        const akaObj = JSON.parse(`[ "at://${handle}" ]`);
         (data.value.document as { alsoKnownAs?: Record<string, unknown> }).alsoKnownAs = akaObj;
-          return data;
+        const doc = data.value.document as { services?: Record<string, any> };
+        if (!doc.services) doc.services = {};
+        if (!doc.services.atproto_pds) doc.services.atproto_pds = {};
+        (doc.services.atproto_pds as { endpoint?: string }).endpoint = serviceEndpoint;
+        return data;
       },
     });
-    await updateAkaTx.completeInputsByCapacity(signer);
-    await updateAkaTx.completeFeeBy(signer);
-    const sent = await signer.sendTransaction(updateAkaTx);
+    await updateHandleTx.completeInputsByCapacity(signer);
+    await updateHandleTx.completeFeeBy(signer);
+    const sent = await signer.sendTransaction(updateHandleTx);
     return sent;
   } catch (error) {
-    console.error('Error updating did:ckb aka:', error);
+    console.error('Error updating did:ckb handle:', error);
     return '';
   }
 }

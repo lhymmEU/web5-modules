@@ -255,7 +255,40 @@ export async function pdsLogin(agent: AtpAgent, did: string, didKey: string, ckb
   }
 }
 
-export async function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<string | null> {
+/*
+$ curl -s 'https://web5.bbsfans.dev/xrpc/com.atproto.repo.getRecord?repo=did:ckb:hulihw5j57scbpqztqcsxzast4slaxfo&collection=app.actor.profile&rkey=self' | jq
+{
+  "uri": "at://did:ckb:hulihw5j57scbpqztqcsxzast4slaxfo/app.actor.profile/self",
+  "cid": "bafyreicvf7s2ixko72zz3fry4g2ihnbxphj5bmyfanbwewrlc3bzavmhae",
+  "value": {
+    "$type": "app.actor.profile",
+    "created": "2026-01-30T09:35:56.535Z",
+    "description": "哈哈哈",
+    "displayName": "david wei",
+    "handle": "david.web5.bbsfans.dev"
+  }
+}
+
+$ curl -s 'https://web5.bbsfans.dev/xrpc/com.atproto.repo.getRecord?repo=did:ckb:52vmubyl4y3al5k246owb7nhkmwhwgx7&collection=app.actor.profile&rkey=self' | jq
+{
+  "uri": "at://did:ckb:52vmubyl4y3al5k246owb7nhkmwhwgx7/app.actor.profile/self",
+  "cid": "bafyreicyywteraj2bb3c4u3sxfaa2r2vkkljkzhtga5fnw2ebni6ch5ba4",
+  "value": {
+    "$type": "app.actor.profile",
+    "created": "2025-12-25T06:55:18Z",
+    "displayName": "jler",
+    "handle": "jler.web5.bbsfans.dev"
+  }
+}
+*/
+
+export type userProfile = {
+  uri: string;
+  cid: string;
+  value: Record<string, any>;
+}
+
+export async function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<userProfile | null> {
   try {
     const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.getRecord`);
     url.searchParams.append('repo', did);
@@ -276,28 +309,24 @@ export async function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<
       return null;
     }
 
-    const data = await response.json();
-    const profile = JSON.stringify(data);
-    console.log('user profile data', profile);
-    return profile;
+    const userProfile = await response.json() as userProfile;
+    return userProfile;
   } catch (e) {
     console.error('fetchUserProfile error:', e);
     return null;
   }
 }
 
-export type PostRecordType = {
-  $type: 'app.actor.profile'
-  displayName: string;
-  handle: string;
-  [key: string]: string | number | boolean | null | undefined;
+export type RecordType = {
+  $type: string;
+  [key: string]: any;
 };
 
 export async function writePDS(agent: AtpAgent, accessJwt: string, didKey: string, keyStoreClient: KeystoreClient, params: {
-  record: PostRecordType
+  record: RecordType
   did: string
   rkey: string
-  type?: 'update' | 'create'
+  type?: 'update' | 'create' | 'delete'
 }): Promise<boolean | null> {
   try {
     const operateType = params.type || 'create'
@@ -313,6 +342,7 @@ export async function writePDS(agent: AtpAgent, accessJwt: string, didKey: strin
     const preWriteTypeMap = {
       create: "fans.web5.ckb.preDirectWrites#create" as const,
       update: "fans.web5.ckb.preDirectWrites#update" as const,
+      delete: "fans.web5.ckb.preDirectWrites#delete" as const,
     }
 
     const preWriteRes = await agent.fans.web5.ckb.preDirectWrites({
@@ -407,7 +437,22 @@ $ curl -s "https://web5.bbsfans.dev/xrpc/com.atproto.repo.describeRepo?repo=did:
 }
 */
 
-export async function fetchRepoInfo(did: string, pdsAPIUrl: string): Promise<any | null> {
+export type RepoInfo = {
+  handle: string;
+  did: string;
+  didDoc: {
+    verificationMethods: Record<string, string>;
+    alsoKnownAs: string[];
+    services: Record<string, {
+      type: string;
+      endpoint: string;
+    }>;
+  };
+  collections: string[];
+  handleIsCorrect: boolean;
+};
+
+export async function fetchRepoInfo(did: string, pdsAPIUrl: string): Promise<RepoInfo | null> {
   try {
     const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.describeRepo`);
     url.searchParams.append('repo', did);
@@ -426,9 +471,8 @@ export async function fetchRepoInfo(did: string, pdsAPIUrl: string): Promise<any
       return null;
     }
 
-    const data = await response.json();
-    console.log('repo info data', data);
-    return data;
+    const repoInfo = await response.json();
+    return repoInfo;
   } catch (e) {
     console.error('fetchRepoInfo error:', e);
     return null;
@@ -461,7 +505,16 @@ $ curl -s "https://bsky.social/xrpc/com.atproto.repo.listRecords?repo=did:plc:pz
 {"records":[]}
 */
 
-export async function fetchRepoRecords(did: string, collection: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<any | null> {
+export type RepoRecords = {
+  cursor?: string;
+  records: {
+    uri: string;
+    cid: string;
+    value: Record<string, any>;
+  }[];
+};
+
+export async function fetchRepoRecords(did: string, collection: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<RepoRecords | null> {
   try {
     const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.listRecords`);
     url.searchParams.append('repo', did);
@@ -494,13 +547,20 @@ export async function fetchRepoRecords(did: string, collection: string, pdsAPIUr
 }
 
 /*
-web5 pds (rsky) does not use blobs; images and similar assets are stored in OSS, and only their URLs are kept in the PDS.
 curl -s 'https://agrocybe.us-west.host.bsky.network/xrpc/com.atproto.sync.listBlobs?did=did%3Aplc%3Apzeifei2oec4vx5a35py4knv&limit=1000'
 {"cursor":"bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di","cids":["bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di"]}
 pic url： https://agrocybe.us-west.host.bsky.network/xrpc/com.atproto.sync.getBlob?did=did:plc:pzeifei2oec4vx5a35py4knv&cid=bafkreif52ptsjaiclntwv4p3squl3yus5tlkac45zxjsbnmupnocx6lmpq
-*/
 
-export async function fetchRepoBlobs(did: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<any | null> {
+web5 pds (rsky) does not use blobs; images and similar assets are stored in OSS, and only their URLs are kept in the PDS.
+$ curl -s 'https://web5.bbsfans.dev/xrpc/com.atproto.sync.listBlobs?did=did:ckb:hulihw5j57scbpqztqcsxzast4slaxfo&limit=1000'
+{"cids":[]}
+*/
+export type RepoBlobs = {
+  cursor?: string;
+  cids: string[];
+};
+
+export async function fetchRepoBlobs(did: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<RepoBlobs | null> {
   try {
     const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.sync.listBlobs`);
     url.searchParams.append('did', did);
@@ -536,7 +596,7 @@ curl -L -o "repo_jler.car" "https://web5.bbsfans.dev/xrpc/com.atproto.sync.getRe
 incremental car:
 curl -L -o "repo_jler_incremental.car" "https://web5.bbsfans.dev/xrpc/com.atproto.sync.getRepo?did=did:ckb:52vmubyl4y3al5k246owb7nhkmwhwgx7&since=bafyreiaoy4e5d4rhkagogxwmi7hg2fpft6u3buc7tmidmt3ry4eqdut2di"
  */
-export async function exportRepoCar(did: string, pdsAPIUrl: string, since?: string): Promise<any | null> {
+export async function exportRepoCar(did: string, pdsAPIUrl: string, since?: string): Promise<ArrayBuffer | null> {
   try {
     const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.sync.getRepo`);
     url.searchParams.append('did', did);
@@ -573,7 +633,7 @@ curl -X POST "$PDS_URL/xrpc/com.atproto.repo.importRepo" \
      --data-binary @repo_jler.car
 */
 
-export async function importRepoCar(did: string, pdsAPIUrl: string, car: ArrayBuffer, accessToken: string): Promise<any | null> {
+export async function importRepoCar(did: string, pdsAPIUrl: string, car: ArrayBuffer, accessToken: string): Promise<boolean | null> {
   try {
     const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.repo.importRepo`);
     url.searchParams.append('did', did);
@@ -591,11 +651,10 @@ export async function importRepoCar(did: string, pdsAPIUrl: string, car: ArrayBu
 
     if (!response.ok) {
       console.error(`Failed to import repo car: ${response.status} ${response.statusText}`);
-      return null;
+      return false;
     }
 
-    const data = await response.json();
-    return data;
+    return true;
   } catch (e) {
     console.error('importRepoCar error:', e);
     return null;

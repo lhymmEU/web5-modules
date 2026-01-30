@@ -38,7 +38,7 @@ export function PdsBrowser() {
       const dynamicCollections = repoInfo.collections as string[];
       setCollections(dynamicCollections);
 
-      const results: Record<string, any[]> = {};
+      const results: Record<string, unknown[]> = {};
       for (const colId of dynamicCollections) {
         const data = await fetchRepoRecords(targetDid, colId, pdsUrl, 50);
         if (data && data.records) {
@@ -46,8 +46,8 @@ export function PdsBrowser() {
         }
       }
       setRecords(results);
-    } catch (e: any) {
-      setError(e.message || 'Failed to browse PDS');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to browse PDS');
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,7 @@ export function PdsBrowser() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert('Failed to download CAR file: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       setDownloading(false);

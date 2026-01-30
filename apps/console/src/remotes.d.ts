@@ -39,11 +39,11 @@ declare module 'did_module/logic' {
       args: string,
       newDidKey: string
     ): Promise<string>;
-  
-    export function updateAka(
+
+    export async function updateHandle(
       signer: ccc.Signer,
       args: string,
-      aka: string
+      handle: string
     ): Promise<string>;
   
     export function transferDidCell(
@@ -104,19 +104,56 @@ declare module 'did_module/logic' {
       keyStoreClient: KeystoreClient
     ): Promise<sessionInfo | null>;
   
-    export function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<string | null>;
+    export type userProfile = {
+      uri: string;
+      cid: string;
+      value: Record<string, any>;
+    }
 
-    export async function fetchRepoInfo(did: string, pdsAPIUrl: string): Promise<any | null>;
-  
-    export function fetchRepoRecords(did: string, collection: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<any | null>;
+    export function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<userProfile | null>;
 
-    export function exportRepoCar(did: string, pdsAPIUrl: string, since?: string): Promise<any | null>;
-
-    export type PostRecordType = {
-      $type: 'app.actor.profile'
-      displayName: string;
+    export type RepoInfo = {
       handle: string;
-      [key: string]: string | number | boolean | null | undefined;
+      did: string;
+      didDoc: {
+        verificationMethods: Record<string, string>;
+        alsoKnownAs: string[];
+        services: Record<string, {
+          type: string;
+          endpoint: string;
+        }>;
+      };
+      collections: string[];
+      handleIsCorrect: boolean;
+    };
+
+    export function fetchRepoInfo(did: string, pdsAPIUrl: string): Promise<RepoInfo | null>;
+  
+    export type RepoRecords = {
+      cursor?: string;
+      records: {
+        uri: string;
+        cid: string;
+        value: Record<string, any>;
+      }[];
+    };
+
+    export function fetchRepoRecords(did: string, collection: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<RepoRecords | null>;
+
+    export type RepoBlobs = {
+      cursor?: string;
+      cids: string[];
+    };
+
+    export function fetchRepoBlobs(did: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<RepoBlobs | null>;
+
+    export function exportRepoCar(did: string, pdsAPIUrl: string, since?: string): Promise<ArrayBuffer | null>;
+
+    export function importRepoCar(did: string, pdsAPIUrl: string, car: ArrayBuffer, accessToken: string): Promise<boolean | null>;
+
+    export type RecordType = {
+      $type: string;
+      [key: string]: any;
     };
   
     export function writePDS(
@@ -125,10 +162,10 @@ declare module 'did_module/logic' {
       didKey: string, 
       keyStoreClient: KeystoreClient, 
       params: {
-        record: PostRecordType
+        record: RecordType
         did: string
         rkey: string
-        type?: 'update' | 'create'
+        type?: 'update' | 'create' | 'delete'
       }
     ): Promise<boolean | null>;
   }

@@ -1,8 +1,6 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-// @ts-ignore
 import { KeystoreClient } from 'keystore/KeystoreClient';
-// @ts-ignore
 import { KEY_STORE_BRIDGE_URL } from 'keystore/constants';
 
 interface KeystoreContextType {

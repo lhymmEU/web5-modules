@@ -9,26 +9,26 @@ import {
   fetchDidCkbCellsInfo, 
   type didCkbCellInfo,
   transferDidCell,
+  updateHandle,
   destroyDidCell,
-  updateDidKey,
-  updateAka
+  updateDidKey
 } from 'did_module/logic';
 import { getDidByUsername } from 'pds_module/logic';
 
 import { usePds } from '../contexts/PdsContext';
 
-function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, processing }: {
+function DidItem({ item, onTransfer, onUpdateKey, onUpdateHandle, onDestroy, processing }: {
   item: didCkbCellInfo;
   onTransfer: (args: string, receiver: string) => void;
   onUpdateKey: (args: string, key: string) => void;
-  onUpdateAka: (args: string, aka: string) => void;
+  onUpdateHandle: (args: string, handle: string) => void;
   onDestroy: (args: string) => void;
   processing: boolean;
 }) {
   const [mode, setMode] = useState<'view' | 'transfer' | 'update'>('view');
   const [transferAddr, setTransferAddr] = useState('');
   const [newKey, setNewKey] = useState('');
-  const [newAka, setNewAka] = useState('');
+  const [newHandle, setNewHandle] = useState('');
 
   // Extract current values for defaults
   useEffect(() => {
@@ -38,7 +38,8 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
         // Defer setState to avoid cascading renders
         queueMicrotask(() => setNewKey(doc.verificationMethods.atproto));
       }
-      if (doc.alsoKnownAs) queueMicrotask(() => setNewAka(JSON.stringify(doc.alsoKnownAs)));
+      // handle is the first item in alsoKnownAs and remove the prefix "at://"
+      if (doc.alsoKnownAs) queueMicrotask(() => setNewHandle(doc.alsoKnownAs[0].replace('at://', '')));
     } catch {
       // ignore
     }
@@ -119,18 +120,18 @@ function DidItem({ item, onTransfer, onUpdateKey, onUpdateAka, onDestroy, proces
           </div>
           
           <div>
-            <div className="text-sm mb-sm font-medium">Update Also Known As (JSON)</div>
+            <div className="text-sm mb-sm font-medium">Update Handle</div>
             <div className="flex gap-sm">
               <input 
                 className="input flex-1" 
-                placeholder='["at://..."]' 
-                value={newAka}
-                onChange={(e) => setNewAka(e.target.value)}
+                placeholder='alice.example.com' 
+                value={newHandle}
+                onChange={(e) => setNewHandle(e.target.value)}
               />
               <button 
                 className="btn btn-primary"
-                disabled={!newAka || processing}
-                onClick={() => onUpdateAka(item.args, newAka)}
+                disabled={!newHandle || processing}
+                onClick={() => onUpdateHandle(item.args, newHandle)}
               >
                 Update
               </button>
@@ -225,7 +226,7 @@ export function DidManager() {
       if (changed) {
         setMetadata(JSON.stringify(current, null, 2));
       }
-    } catch (e) {
+    } catch {
       // Ignore errors in metadata parsing during auto-update
     }
   }, [metadata, pdsUsername, pdsAddress, didKey]);
@@ -361,20 +362,20 @@ export function DidManager() {
     }
   };
   
-  const handleUpdateAka = async (didArgs: string, newAka: string) => {
+  const handleUpdateHandle = async (didArgs: string, newHandle: string) => {
     if (!signer) return;
     setProcessingId(didArgs);
     setActionStatus(null);
     try {
-      const hash = await updateAka(signer, didArgs, newAka);
+      const hash = await updateHandle(signer, didArgs, newHandle);
       if (hash) {
-        setActionStatus({ type: 'success', message: `Update AKA successful! Tx: ${hash}` });
+        setActionStatus({ type: 'success', message: `Update Handle successful! Tx: ${hash}` });
         handleFetchList();
       } else {
-        setActionStatus({ type: 'error', message: 'Update AKA failed' });
+        setActionStatus({ type: 'error', message: 'Update Handle failed' });
       }
     } catch (e: unknown) {
-      setActionStatus({ type: 'error', message: e instanceof Error ? e.message : String(e) || 'Update AKA failed' });
+      setActionStatus({ type: 'error', message: e instanceof Error ? e.message : String(e) || 'Update Handle failed' });
     } finally {
       setProcessingId(null);
     }
@@ -603,7 +604,7 @@ export function DidManager() {
                   item={item} 
                   onTransfer={handleTransfer}
                   onUpdateKey={handleUpdateKey}
-                  onUpdateAka={handleUpdateAka}
+                  onUpdateHandle={handleUpdateHandle}
                   onDestroy={handleDestroy}
                   processing={processingId === item.args}
                 />

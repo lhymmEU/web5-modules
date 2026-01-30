@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { Server, Loader, LogIn, LogOut, Shield, Edit2, Save, X, UserPlus, CheckCircle, Trash2 } from 'lucide-react';
+import { Server, Loader, LogIn, LogOut, Shield, Edit2, Save, X, UserPlus, CheckCircle, Trash2, FileUp } from 'lucide-react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
-import { pdsLogin, fetchUserProfile, writePDS, type PostRecordType, type sessionInfo, getDidByUsername, pdsCreateAccount, type userInfo, pdsDeleteAccount } from 'pds_module/logic';
+import { pdsLogin, fetchUserProfile, writePDS, type RecordType, type sessionInfo, getDidByUsername, pdsCreateAccount, type userInfo, pdsDeleteAccount, importRepoCar, type userProfile as UserProfileType } from 'pds_module/logic';
 
 export function PdsManager() {
   const { wallet } = ccc.useCcc();
@@ -34,27 +34,21 @@ export function PdsManager() {
   const [session, setSession] = useState<sessionInfo | null>(null);
   
   // Profile State
-  const [userProfile, setUserProfile] = useState<PostRecordType | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileType | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [isSaving, setSaving] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Fetch User Profile
   useEffect(() => {
     if (session && session.did && pdsUrl) {
-      fetchUserProfile(session.did, pdsUrl).then(profileStr => {
-        if (profileStr) {
-          try {
-            const data = JSON.parse(profileStr);
-            // .value contains the actual record data in getRecord response
-            const profile = data.value || data; 
-            setUserProfile(profile);
-            setEditDisplayName(profile.displayName || '');
-            setEditDescription(profile.description || '');
-          } catch (e) {
-            console.error("Failed to parse profile", e);
-          }
+      fetchUserProfile(session.did, pdsUrl).then(profile => {
+        if (profile) {
+          setUserProfile(profile);
+          setEditDisplayName(profile.value.displayName || '');
+          setEditDescription(profile.value.description || '');
         }
       });
     } else {
@@ -67,7 +61,7 @@ export function PdsManager() {
     
     setSaving(true);
     try {
-        const record: PostRecordType = {
+        const record: RecordType = {
             $type: 'app.actor.profile',
             displayName: editDisplayName,
             description: editDescription,
@@ -83,10 +77,8 @@ export function PdsManager() {
 
         if (writeResult) {
             // Refresh profile
-            const profileStr = await fetchUserProfile(session.did, pdsUrl);
-            if (profileStr) {
-                 const data = JSON.parse(profileStr);
-                 const profile = data.value || data;
+            const profile = await fetchUserProfile(session.did, pdsUrl);
+            if (profile) {
                  setUserProfile(profile);
             }
             setIsEditing(false);
@@ -235,6 +227,34 @@ export function PdsManager() {
   const handleLogout = () => {
     setSession(null);
     setLoginStatus('idle');
+  };
+
+  const handleImportCar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !session || !pdsUrl) return;
+
+    setIsImporting(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await importRepoCar(session.did, pdsUrl, arrayBuffer, session.accessJwt);
+      if (result) {
+        alert('CAR file imported successfully!');
+        // Refresh profile to see any changes if applicable
+        const profile = await fetchUserProfile(session.did, pdsUrl);
+        if (profile) {
+          setUserProfile(profile);
+        }
+      } else {
+        throw new Error('Failed to import CAR file');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to import CAR: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setIsImporting(false);
+      // Reset input
+      event.target.value = '';
+    }
   };
 
   return (
@@ -471,24 +491,43 @@ export function PdsManager() {
                     <div className="flex-col justify-between items-start mb-lg gap-sm">
                         <div className="w-full">
                         <div className="font-bold text-lg text-inherit line-height-tight mb-xs" style={{ fontSize: '1.5rem' }}>
-                            {userProfile?.displayName || session?.handle}
+                            {userProfile?.value?.displayName || session?.handle}
                         </div>
                         <div className="text-sm text-muted mb-sm">@{session?.handle}</div>
                         
-                        {userProfile?.description && (
+                        {userProfile?.value?.description && (
                             <div className="text-sm text-muted w-full line-height-normal">
-                            {userProfile.description}
+                            {userProfile.value.description}
                             </div>
                         )}
                         </div>
-                    <div className="flex gap-sm">
-                        <button className="btn btn-secondary" onClick={() => setIsEditing(true)}>
-                            <Edit2 size={16} /> Edit Profile
-                        </button>
-                        <button className="btn btn-secondary" onClick={handleLogout}>
-                            <LogOut size={16} /> Sign Out
-                        </button>
-                    </div>
+                        <div className="flex-col gap-md">
+                            <div className="flex gap-sm">
+                                <button className="btn btn-secondary" onClick={() => setIsEditing(true)}>
+                                    <Edit2 size={16} /> Edit Profile
+                                </button>
+                                <button className="btn btn-secondary" onClick={handleLogout}>
+                                    <LogOut size={16} /> Sign Out
+                                </button>
+                            </div>
+                            
+                            <div className="pt-md border-t border-slate-100">
+                                <label className={`btn btn-secondary cursor-pointer inline-flex items-center gap-sm ${isImporting ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    {isImporting ? <Loader size={16} className="spin" /> : <FileUp size={16} />}
+                                    Import CAR
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        accept=".car" 
+                                        onChange={handleImportCar}
+                                        disabled={isImporting}
+                                    />
+                                </label>
+                                <div className="text-xs text-muted mt-sm italic">
+                                    Import your existing repository data from a CAR file.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </>
             )}
