@@ -164,17 +164,17 @@ export async function updateAka(
         const akaObj = JSON.parse(aka);
         (data.value.document as { alsoKnownAs?: Record<string, unknown> }).alsoKnownAs = akaObj;
           return data;
-        },
-      });
-      await updateAkaTx.completeInputsByCapacity(signer);
-      await updateAkaTx.completeFeeBy(signer);
-      const sent = await signer.sendTransaction(updateAkaTx);
-      return sent;
-    } catch (error) {
-      console.error('Error updating did:ckb aka:', error);
-      return '';
-    }
+      },
+    });
+    await updateAkaTx.completeInputsByCapacity(signer);
+    await updateAkaTx.completeFeeBy(signer);
+    const sent = await signer.sendTransaction(updateAkaTx);
+    return sent;
+  } catch (error) {
+    console.error('Error updating did:ckb aka:', error);
+    return '';
   }
+}
     
 export async function transferDidCell(
   signer: ccc.Signer,

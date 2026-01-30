@@ -12,7 +12,7 @@ import { KEY_STORE_URL } from 'keystore/constants';
 export function Layout() {
   const location = useLocation();
   const { connected, didKey } = useKeystore();
-  const { pdsUrl, setPdsUrl, availablePds } = usePds();
+  const { pdsUrl, setPdsUrl, availablePds, username, setUsername, resolvedDid, isResolving, isAvailable } = usePds();
   const { wallet, open, disconnect } = ccc.useCcc();
   const signer = ccc.useSigner();
   
@@ -122,19 +122,54 @@ export function Layout() {
           </a>
         </div>
 
-        {/* Row 3: PDS Selector */}
-        <div className="badge">
-          <Server size={16} />
-          <select 
-            value={pdsUrl} 
-            onChange={(e) => setPdsUrl(e.target.value)}
-            className="border-none bg-transparent text-inherit font-medium cursor-pointer outline-none"
-          >
-            {availablePds.map(url => (
-              <option key={url} value={url}>{url}</option>
-            ))}
-          </select>
+        {/* Row 3: PDS Selector & Username */}
+        <div className="flex gap-2 items-center justify-end">
+          {/* Username Input */}
+          <div className="badge gap-0 p-0 overflow-hidden border">
+            <div className="px-2 py-1 bg-slate-100 border-r flex items-center">
+              <span className="text-xs font-bold text-muted">@</span>
+            </div>
+            <input 
+              className="px-2 py-1 outline-none text-sm bg-transparent min-w-[100px]"
+              placeholder="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+
+          {/* PDS Selector */}
+          <div className="badge">
+            <Server size={16} />
+            <select 
+              value={pdsUrl} 
+              onChange={(e) => setPdsUrl(e.target.value)}
+              className="border-none bg-transparent text-inherit font-medium cursor-pointer outline-none"
+            >
+              {availablePds.map(url => (
+                <option key={url} value={url}>{url}</option>
+              ))}
+            </select>
+          </div>
         </div>
+
+        {/* Row 4: Resolved DID Status */}
+        {(username) && (
+          <div className="text-xs text-right mt-1">
+            {isResolving ? (
+              <span className="text-muted flex items-center justify-end gap-1">
+                <Loader size={10} className="spin" /> Resolving DID...
+              </span>
+            ) : !isAvailable ? (
+              <span className="text-danger italic">Not available</span>
+            ) : resolvedDid ? (
+              <span className="text-success font-mono" title={resolvedDid}>
+                DID: {resolvedDid.slice(0, 12)}...{resolvedDid.slice(-6)}
+              </span>
+            ) : (
+              <span className="text-muted italic">No DID found</span>
+            )}
+          </div>
+        )}
       </div>
       
       <nav className="nav-bar">

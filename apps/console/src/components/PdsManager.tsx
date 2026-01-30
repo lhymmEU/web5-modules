@@ -1,20 +1,31 @@
 
 import { useState, useEffect } from 'react';
-import { Server, Loader, LogIn, LogOut, AlertTriangle, Shield, Edit2, Save, X } from 'lucide-react';
+import { Server, Loader, LogIn, LogOut, Shield, Edit2, Save, X, UserPlus, CheckCircle, Trash2 } from 'lucide-react';
 import { useKeystore } from '../contexts/KeystoreContext';
 import { usePds } from '../contexts/PdsContext';
 import { ccc } from '@ckb-ccc/connector-react';
-import { pdsLogin, fetchUserProfile, writePDS, type PostRecordType, type sessionInfo, getDidByUsername } from 'pds_module/logic';
+import { pdsLogin, fetchUserProfile, writePDS, type PostRecordType, type sessionInfo, getDidByUsername, pdsCreateAccount, type userInfo, pdsDeleteAccount } from 'pds_module/logic';
 
 export function PdsManager() {
   const { wallet } = ccc.useCcc();
   const signer = ccc.useSigner();
   const { connected, didKey, client } = useKeystore();
-  const { agent, pdsUrl } = usePds();
+  const { agent, pdsUrl, username: pdsUsername } = usePds();
   
   // CKB Address State
   const [address, setAddress] = useState<string>('');
   
+  // Registration States
+  const [registerDid, setRegisterDid] = useState<string>('');
+  const [registerStatus, setRegisterStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [registerError, setRegisterError] = useState('');
+  const [registeredUserInfo, setRegisteredUserInfo] = useState<userInfo | null>(null);
+
+  // Deletion States
+  const [deleteUsername, setDeleteUsername] = useState('');
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [deleteError, setDeleteError] = useState('');
+
   // Login States
   const [username, setUsername] = useState<string>('');
   const [did, setDid] = useState<string>('');
@@ -148,6 +159,79 @@ export function PdsManager() {
     }
   };
 
+  const handleRegisterPds = async () => {
+    if (!registerDid || !didKey || !pdsUsername || !pdsUrl || !address || !agent) {
+      setRegisterError('Missing required information (DID, DID Key, Username, PDS Address, CKB Address, or Agent)');
+      setRegisterStatus('error');
+      return;
+    }
+
+    setRegisterStatus('processing');
+    setRegisterError('');
+    setRegisteredUserInfo(null);
+
+    try {
+      if (!client) {
+        throw new Error('Keystore client not connected');
+      }
+      
+      // Create account
+      const userInfo = await pdsCreateAccount(agent, pdsUrl, pdsUsername, didKey, registerDid, address, client);
+      
+      if (userInfo) {
+        setRegisteredUserInfo(userInfo);
+        setRegisterStatus('success');
+      } else {
+        throw new Error('Failed to create PDS account');
+      }
+    } catch (e: unknown) {
+      setRegisterError(e instanceof Error ? e.message : String(e));
+      setRegisterStatus('error');
+    }
+  };
+
+  const handleDeletePdsAccount = async () => {
+    if (!deleteUsername || !signer || !didKey || !pdsUrl || !agent) {
+      setDeleteError('Missing required info (Username, Wallet, DID Key, PDS Address, or Agent)');
+      setDeleteStatus('error');
+      return;
+    }
+
+    setDeleteStatus('processing');
+    setDeleteError('');
+
+    try {
+      // 0. Resolve DID
+      const resolvedDid = await getDidByUsername(deleteUsername, pdsUrl);
+      if (!resolvedDid || resolvedDid === '') {
+         throw new Error(`Could not find DID for username "${deleteUsername}" on PDS ${pdsUrl}`);
+      }
+
+      if (!confirm(`Are you sure you want to delete PDS account for "${deleteUsername}" (DID: ${resolvedDid})? This action cannot be undone.`)) {
+        setDeleteStatus('idle');
+        return;
+      }
+
+      if (!client) {
+        throw new Error('Keystore client not connected');
+      }
+
+      // 1. Delete account
+      const address = await signer.getRecommendedAddress();
+      const success = await pdsDeleteAccount(agent, resolvedDid, address, didKey, client);
+      
+      if (success) {
+        setDeleteStatus('success');
+        setDeleteUsername(''); // Clear input on success
+      } else {
+        throw new Error('Failed to delete PDS account');
+      }
+    } catch (e: unknown) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
+      setDeleteStatus('error');
+    }
+  };
+
   const handleLogout = () => {
     setSession(null);
     setLoginStatus('idle');
@@ -161,10 +245,10 @@ export function PdsManager() {
         </div>
         <div>
           <h2 className="m-0 text-lg">PDS Manager</h2>
-          <div className="text-muted text-sm">Manage your Personal Data Server account</div>
+          <div className="text-muted text-sm">Login and manage your PDS account</div>
         </div>
       </div>
-      
+
       {!wallet ? (
         <div className="card text-center text-muted border-dashed">
           Please connect your CKB wallet in the header.
@@ -174,50 +258,163 @@ export function PdsManager() {
           Keystore disconnected. Please check your connection in the header.
         </div>
       ) : !session ? (
-        /* Login Section */
-        <div className="card mx-auto max-w-sm">
-          <h3 className="flex justify-center items-center gap-sm mb-lg text-lg">
-            <LogIn size={20} /> Login to PDS
-          </h3>
+        <div className="flex-col gap-lg">
+          {/* Registration Section */}
+          <div className="card">
+            <h3 className="flex items-center gap-sm mb-md text-sm">
+              <UserPlus size={18} />
+              Register PDS Account
+            </h3>
+            
+            <div className="flex-col gap-md">
+              <div className="flex-col pb-md border-b border-slate-200">
+                <div className="mb-sm">
+                  <label className="text-xs text-muted mb-sm block">PDS Address</label>
+                  <div className="badge badge-primary">{pdsUrl}</div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted mb-sm block">Username</label>
+                  <div className="badge badge-primary">{pdsUsername || 'Not set'}</div>
+                </div>
+              </div>
 
-          <div className="mb-md">
-            <label className="text-sm font-medium text-muted mb-xs block">PDS URL</label>
-            <div className="badge badge-primary">
-              {pdsUrl}
+              <div className="input-group vertical">
+                <label className="label">DID (Decentralized Identifier)</label>
+                <input 
+                  className="input" 
+                  placeholder="did:ckb:..." 
+                  value={registerDid}
+                  onChange={(e) => setRegisterDid(e.target.value)}
+                />
+                <div className="text-xs text-muted mt-xs">
+                  Enter the DID you created in the DID Manager.
+                </div>
+              </div>
+
+              <div className="flex">
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleRegisterPds}
+                  disabled={registerStatus === 'processing' || !registerDid || !didKey}
+                >
+                  {registerStatus === 'processing' ? <Loader size={16} className="spin" /> : <UserPlus size={16} />}
+                  Register PDS Account
+                </button>
+              </div>
+
+              {registerStatus === 'error' && (
+                <div className="mt-sm text-danger text-sm">
+                  Registration failed: {registerError}
+                </div>
+              )}
+
+              {registerStatus === 'success' && registeredUserInfo && (
+                <div className="mt-sm p-sm bg-green-50 rounded border border-green-200">
+                  <div className="text-success text-sm font-medium mb-sm flex items-center gap-sm">
+                    <CheckCircle size={16} /> Registration Successful!
+                  </div>
+                  <div className="text-xs font-mono text-muted">
+                    <div className="mb-xs"><strong>Handle:</strong> {registeredUserInfo.handle}</div>
+                    <div className="mb-xs break-all"><strong>DID:</strong> {registeredUserInfo.did}</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="mb-lg">
-            <label className="text-sm font-medium text-muted mb-xs block">Username</label>
-            <input 
-              className="input" 
-              placeholder="alice" 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
+          {/* Delete DID Section */}
+          <div className="card">
+            <h3 className="flex items-center gap-sm mb-md text-sm text-danger">
+              <Trash2 size={18} />
+              Delete PDS Account
+            </h3>
 
-          <div className="flex">
-            <button 
-              className="btn btn-primary"
-              onClick={handleLogin}
-              disabled={loginStatus === 'processing'}
-            >
-              {loginStatus === 'processing' ? <Loader size={16} className="spin" /> : <LogIn size={16} />}
-              Sign In
-            </button>
-          </div>
+            <div className="flex-col gap-md">
+              <div className="input-group vertical">
+                <label className="text-sm font-medium text-muted mb-xs block">Username to Delete</label>
+                <input 
+                  className="input" 
+                  placeholder="alice" 
+                  value={deleteUsername}
+                  onChange={(e) => setDeleteUsername(e.target.value)}
+                />
+              </div>
 
-          {loginStatus === 'error' && (
-            <div className="mt-md p-sm bg-red-50 text-danger rounded flex items-center gap-sm text-sm">
-              <AlertTriangle size={16} />
-              {loginError}
+              <div className="flex">
+                <button 
+                  className="btn btn-danger"
+                  onClick={handleDeletePdsAccount}
+                  disabled={deleteStatus === 'processing' || !deleteUsername || !didKey}
+                >
+                  {deleteStatus === 'processing' ? <Loader size={16} className="spin" /> : <Trash2 size={16} />}
+                  Delete PDS Account
+                </button>
+              </div>
+
+              {deleteStatus === 'error' && (
+                <div className="mt-sm text-danger text-sm">
+                  Deletion failed: {deleteError}
+                </div>
+              )}
+
+              {deleteStatus === 'success' && (
+                <div className="mt-sm p-sm bg-green-50 rounded border border-green-200 text-success text-sm">
+                  <div className="font-medium flex items-center gap-sm mb-xs">
+                    <CheckCircle size={16} /> PDS Account Deleted Successfully!
+                  </div>
+                  <div>Please proceed to "My DIDs" section in DID Manager to destroy the corresponding DID Cell on CKB.</div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Login Section */}
+          <div className="card">
+            <h3 className="flex items-center gap-sm mb-md text-sm">
+              <LogIn size={18} />
+              Login to PDS
+            </h3>
+
+            <div className="flex-col gap-md">
+              <div className="pb-md border-b border-slate-200">
+                <label className="text-xs text-muted mb-sm block">PDS URL</label>
+                <div className="badge badge-primary">
+                  {pdsUrl}
+                </div>
+              </div>
+
+              <div className="input-group vertical">
+                <label className="label">Username</label>
+                <input 
+                  className="input" 
+                  placeholder="alice" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+
+              <div className="flex">
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleLogin}
+                  disabled={loginStatus === 'processing'}
+                >
+                  {loginStatus === 'processing' ? <Loader size={16} className="spin" /> : <LogIn size={16} />}
+                  Sign In
+                </button>
+              </div>
+
+              {loginStatus === 'error' && (
+                <div className="mt-sm text-danger text-sm">
+                  Login failed: {loginError}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         /* Authenticated View */
-        <div>
+        <div className="flex-col gap-lg">
           <div className="card">
             
             {isEditing ? (
