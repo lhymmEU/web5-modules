@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Copy, Plus, Trash2, Key, Download, Upload, Check } from 'lucide-react';
-import { decryptData, encryptData, generateSecp256k1KeyPair } from '../utils/crypto';
+import { decryptData, encryptData, generateSecp256k1KeyPair, importSecp256k1KeyPair } from '../utils/crypto';
 import { 
   addKey, 
   deleteKey, 
@@ -19,6 +19,8 @@ export function KeyStore() {
   
   // Native Dialog Refs
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const createKeyDialogRef = useRef<HTMLDialogElement | null>(null);
+  const importKeyDialogRef = useRef<HTMLDialogElement | null>(null);
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
   const dialogResolver = useRef<((value: string | null) => void) | null>(null);
   const [dialogTitle, setDialogTitle] = useState('');
@@ -29,6 +31,7 @@ export function KeyStore() {
       setDialogTitle(title);
       dialogResolver.current = resolve;
       if (dialogRef.current) {
+        dialogRef.current.returnValue = ''; // Reset return value
         if (passwordInputRef.current) passwordInputRef.current.value = '';
         dialogRef.current.showModal();
       } else {
@@ -50,9 +53,14 @@ export function KeyStore() {
      dialogRef.current?.close(password);
   };
 
-  // New Key Modal
-  const [showNewKeyModal, setShowNewKeyModal] = useState(false);
+  // Create Key
   const [newKeyAlias, setNewKeyAlias] = useState('');
+  
+  // Import Key
+  const [importPrivateKey, setImportPrivateKey] = useState('');
+  const [importKeyAlias, setImportKeyAlias] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+
   const [copySuccessId, setCopySuccessId] = useState<string | null>(null);
 
   const refreshFromStorage = () => {
@@ -64,7 +72,8 @@ export function KeyStore() {
     refreshFromStorage();
   }, []);
 
-  const handleCreateKey = async () => {
+  const handleCreateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsCreating(true);
     try {
       const keyPair = await generateSecp256k1KeyPair();
@@ -75,10 +84,44 @@ export function KeyStore() {
       }, newKeyAlias);
       
       setNewKeyAlias('');
-      setShowNewKeyModal(false);
+      createKeyDialogRef.current?.close();
       refreshFromStorage();
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleImportKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importPrivateKey.trim()) {
+      alert('Please enter a private key.');
+      return;
+    }
+    
+    setIsImporting(true);
+    try {
+      // Basic hex validation
+      const hex = importPrivateKey.trim().startsWith('0x') ? importPrivateKey.trim().slice(2) : importPrivateKey.trim();
+      if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+        throw new Error('Invalid private key format. Expected 64 hex characters.');
+      }
+
+      const keyPair = await importSecp256k1KeyPair(hex);
+      addKey({
+        privateKey: keyPair.privateKey,
+        didKey: keyPair.didKey,
+        createdAt: Date.now(),
+      }, importKeyAlias);
+      
+      setImportPrivateKey('');
+      setImportKeyAlias('');
+      importKeyDialogRef.current?.close();
+      refreshFromStorage();
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert(error instanceof Error ? error.message : 'Import failed. Check your private key.');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -298,37 +341,89 @@ export function KeyStore() {
         })}
       </div>
 
-      <button 
-        className="btn btn-success mt-4 flex items-center gap-2"
-        onClick={() => setShowNewKeyModal(true)}
-      >
-        <Plus size={18} /> Create New Key
-      </button>
+      <div className="flex gap-2">
+        <button 
+          className="btn btn-success mt-4 flex items-center gap-2"
+          onClick={() => createKeyDialogRef.current?.showModal()}
+        >
+          <Plus size={18} /> Create New Key
+        </button>
+        <button 
+          className="btn btn-primary mt-4 flex items-center gap-2"
+          onClick={() => importKeyDialogRef.current?.showModal()}
+        >
+          <Upload size={18} /> Import Private Key
+        </button>
+      </div>
 
-      {/* Create Key Modal */}
-      {showNewKeyModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Create New Keypair</h3>
-            <div className="input-group vertical mt-4">
-              <label className="label">Alias (Optional)</label>
+      {/* Create Key Dialog */}
+      <dialog ref={createKeyDialogRef} className="native-dialog">
+        <form onSubmit={handleCreateKey} className="dialog-form">
+          <h3>Create New Keypair</h3>
+          <div className="input-group vertical mt-4">
+            <label className="label">Alias (Optional)</label>
+            <input 
+              value={newKeyAlias}
+              onChange={(e) => setNewKeyAlias(e.target.value)}
+              placeholder="e.g. My Main Identity"
+              autoFocus
+              className="input"
+            />
+          </div>
+          <div className="dialog-actions mt-6">
+            <button 
+              type="button" 
+              className="btn btn-secondary" 
+              onClick={() => createKeyDialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={isCreating}>
+              {isCreating ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </dialog>
+
+      {/* Import Key Dialog */}
+      <dialog ref={importKeyDialogRef} className="native-dialog">
+        <form onSubmit={handleImportKey} className="dialog-form">
+          <h3>Import Private Key</h3>
+          <div className="flex-col gap-4 mt-4">
+            <div className="input-group vertical">
+              <label className="label">Private Key (Hex)</label>
               <input 
-                value={newKeyAlias}
-                onChange={(e) => setNewKeyAlias(e.target.value)}
-                placeholder="e.g. My Main Identity"
+                value={importPrivateKey}
+                onChange={(e) => setImportPrivateKey(e.target.value)}
+                placeholder="64-character hex string"
                 autoFocus
                 className="input"
               />
             </div>
-            <div className="modal-actions mt-6">
-              <button className="btn btn-secondary" onClick={() => setShowNewKeyModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleCreateKey} disabled={isCreating}>
-                {isCreating ? 'Creating...' : 'Create'}
-              </button>
+            <div className="input-group vertical">
+              <label className="label">Alias (Optional)</label>
+              <input 
+                value={importKeyAlias}
+                onChange={(e) => setImportKeyAlias(e.target.value)}
+                placeholder="e.g. My Imported Key"
+                className="input"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <div className="dialog-actions mt-6">
+            <button 
+              type="button" 
+              className="btn btn-secondary" 
+              onClick={() => importKeyDialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={isImporting}>
+              {isImporting ? 'Importing...' : 'Import'}
+            </button>
+          </div>
+        </form>
+      </dialog>
 
       {/* File Input for Import */}
       <input

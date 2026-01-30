@@ -33,6 +33,15 @@ export const generateSecp256k1KeyPair = async (): Promise<KeyPair> => {
     };
 };
 
+export const importSecp256k1KeyPair = async (privateKeyHex: string): Promise<KeyPair> => {
+    const keypair = await Secp256k1Keypair.import(hexToBytes(privateKeyHex));
+
+    return {
+        privateKey: privateKeyHex,
+        didKey: keypair.did(), // Returns did:key format which includes public key
+    };
+};
+
 export const signMessage = async (message: Uint8Array, privateKeyHex: string): Promise<Uint8Array> => {
     const keypair = await Secp256k1Keypair.import(hexToBytes(privateKeyHex));
     const signature = await keypair.sign(message);
