@@ -660,3 +660,27 @@ export async function importRepoCar(did: string, pdsAPIUrl: string, car: ArrayBu
     return null;
   }
 }
+
+
+// util function for relayer
+
+/*
+$ curl -s "https://relayer.bbsfans.dev/xrpc/_health"
+{"status":"ok"}
+*/
+
+/*
+$ curl -sS "https://relayer.bbsfans.dev/xrpc/com.atproto.sync.getLatestCommit?did=did:ckb:hulihw5j57scbpqztqcsxzast4slaxfo"
+{"cid":"bafyreidife7vadje5nrdss36juz4azsf3qm7sq3myltdb22v3oe7csiah4","rev":"3mdmyyuk67fgm"}
+*/
+
+
+/*
+$ websocat wss://relayer.bbsfans.dev/xrpc/com.atproto.sync.subscribeRepos
+atg#commitbopcopsccid�X%q Z2 �f<�6�C��][�dpathxapp.bbs.like/3mdtvplexqs2kfactionfcreatecrevm3mdtvplidhlhacseq�repox(did:ckb:52vmubyl4y3al5k246owb7nhkmwhwgx7dtimex2026-02-02T03:28:37.631Zeblobsesincem3mdhe7u4utwp7fblocksY�eroots�X%q d�<cg"!�U
+
+返回结果是二进制帧。subscribeRepos 通过 WebSocket 发送 CBOR 编码的事件帧，事件体里还会嵌入 CAR（IPLD/CBOR）区块切片用于承载记录数据。
+- 帧格式见代码：先读 header，再根据 MsgType 读具体事件（#commit、#sync、#identity、#account、#info、#labels），全是 CBOR 二进制，所以直接在终端显示会是不可读字节流
+
+https://skyware.js.org/guides/firehose/introduction/getting-started/
+*/

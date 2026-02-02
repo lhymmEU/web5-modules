@@ -197,6 +197,12 @@ export function Layout() {
         >
           PDS Browser
         </Link>
+        <Link 
+          to="/relayer" 
+          className={`nav-link ${location.pathname === '/relayer' ? 'active' : ''}`}
+        >
+          Relayer
+        </Link>
       </nav>
 
       <div className="content-area">
