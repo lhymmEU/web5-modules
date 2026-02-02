@@ -4,8 +4,12 @@ export const STORAGE_KEY_STATE = 'web5_keystore_state';
 export const STORAGE_KEY_WHITELIST = 'web5_keystore_origin_whitelist';
 
 export const DEFAULT_WHITELIST = [
-  'http://localhost:3000', // Console App
-  'http://localhost:3001', // Keystore App itself
+  'http://localhost:3000', // Console App dev
+  'http://localhost:3001', // Keystore App itself dev
+  'https://console.web5.fans', // Console App
+  'https://keystore.web5.fans', // Keystore App
+  'https://www.bbsfans.dev', // bbsfans.dev
+  'https://www.ccfdao.dev', // ccfdao.dev
 ];
 
 export interface SigningKeyData {
