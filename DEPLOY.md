@@ -10,8 +10,8 @@ We recommend deploying each app as a separate project in Vercel.
 | :--- | :--- | :--- | :--- |
 | **Keystore** | `apps/keystore` | `keystore.web5.fans` | `VITE_KEYSTORE_URL` |
 | **Console** | `apps/console` | `console.web5.fans` | `DID_MODULE_URL`, `PDS_MODULE_URL`, `KEYSTORE_MODULE_URL` |
-| **DID Module** | `apps/did` | `did.web5.fans` | None |
-| **PDS Module** | `apps/pds` | `pds.web5.fans` | None |
+| **DID Module** | `apps/did` | `did-module.web5.fans` | None |
+| **PDS Module** | `apps/pds` | `pds-module.web5.fans` | None |
 
 ## 2. Deployment Steps
 
@@ -21,7 +21,7 @@ Since Console depends on these, deploy them first.
 
 1.  **Import Project** in Vercel.
 2.  Select the **Monorepo Root**.
-3.  **Project Name**: `web5-did` (or similar).
+3.  **Project Name**: `did-module` (or similar).
 4.  **Framework Preset**: Vite.
 5.  **Root Directory**: Click "Edit" and select `apps/did`.
 6.  **Build Command**: `cd ../.. && npx turbo run build --filter=@web5-modules/did` (or rely on default if Vercel detects it correctly).
@@ -41,8 +41,8 @@ Since Console depends on these, deploy them first.
 
 1.  **Import Project** -> Root Directory: `apps/console`.
 2.  **Environment Variables**:
-    *   `DID_MODULE_URL`: `https://did.web5.fans/assets/remoteEntry.js`
-    *   `PDS_MODULE_URL`: `https://pds.web5.fans/assets/remoteEntry.js`
+    *   `DID_MODULE_URL`: `https://did-module.web5.fans/assets/remoteEntry.js`
+    *   `PDS_MODULE_URL`: `https://pds-module.web5.fans/assets/remoteEntry.js`
     *   `KEYSTORE_MODULE_URL`: `https://keystore.web5.fans/assets/remoteEntry.js`
 3.  **Deploy**.
 

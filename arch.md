@@ -86,6 +86,7 @@ graph TD
     *   `buildCreateTransaction`: 构建创建 DID 的 CKB 交易。
     *   `fetchDidCkbCellsInfo`: 查询链上 DID Cell 信息。
     *   `updateDidKey`: 更新 DID 绑定的公钥。
+    *   `updateHandle`: 更新 DID 绑定的 Handle。
     *   `transferDidCell`: 转移 DID 所有权。
     *   `destroyDidCell`: 销毁 DID。
 
@@ -199,7 +200,7 @@ web5fans/
 建议使用 Vercel 等 Monorepo 原生支持的平台。
 *   **Keystore**: 部署为 `keystore.web5.fans`。必须配置 HTTPS，且作为独立 Origin 运行以保护 LocalStorage。
 *   **Console**: 部署为 `console.web5.fans`。
-*   **Modules**: 部署为 `did.web5.fans`, `pds.web5.fans`。
+*   **Modules**: 部署为 `did-module.web5.fans`, `pds-module.web5.fans`。
 
 ### 6.2 版本管理与兼容性
 *   **滚动更新 (Rolling)**: 推荐 Remote 模块保持接口向后兼容，部署后 Host App 即时生效。
