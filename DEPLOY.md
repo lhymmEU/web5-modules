@@ -15,36 +15,56 @@ We recommend deploying each app as a separate project in Vercel.
 
 ## 2. Deployment Steps
 
-### Step 1: Deploy Remote Modules (DID & PDS)
+### Step 1: Deploy Remote Modules DID
 
 Since Console depends on these, deploy them first.
 
 1.  **Import Project** in Vercel.
 2.  Select the **Monorepo Root**.
-3.  **Project Name**: `did-module` (or similar).
+3.  **Project Name**: `modules-did` (or similar).
 4.  **Framework Preset**: Vite.
 5.  **Root Directory**: Click "Edit" and select `apps/did`.
 6.  **Build Command**: `cd ../.. && npx turbo run build --filter=@web5-modules/did` (or rely on default if Vercel detects it correctly).
-    *   *Tip*: Vercel usually auto-detects Vite settings. Ensure `Output Directory` is `dist`.
-7.  **Deploy**.
-8.  **Repeat** for `apps/pds`.
+7.   Ensure `Output Directory` is `dist`.
+8.  **Install Command**: `npm install`
+9.  **Deploy**.
+10. **Assign Domain**: Go to Settings -> Domains and assign `did-module.web5.fans`.
 
-### Step 2: Deploy Keystore
+### Step 2: Deploy PDS Module
+
+1.  **Import Project** -> Root Directory: `apps/pds`.
+2.  **Project Name**: `modules-pds` (or similar).
+3.  **Framework Preset**: Vite.
+4.  **Build Command**: `cd ../.. && npx turbo run build --filter=@web5-modules/pds` (or rely on default if Vercel detects it correctly).
+5.  **Install Command**: `npm install`
+6. **Environment Variables**:
+    *   `VITE_KEYSTORE_MODULE_URL`: `https://keystore.web5.fans/assets/remoteEntry.js`
+7.  **Deploy**.
+8.  **Assign Domain**: Go to Settings -> Domains and assign `pds-module.web5.fans`.
+
+### Step 3: Deploy Keystore
 
 1.  **Import Project** -> Root Directory: `apps/keystore`.
-2.  **Environment Variables**:
+3.  **Project Name**: `modules-keystore` (or similar).
+4.  **Build Command**: `cd ../.. && npx turbo run build --filter=@web5-modules/keystore` (or rely on default if Vercel detects it correctly).
+5.  **Install Command**: `npm install`
+6. **Environment Variables**:
     *   `VITE_KEYSTORE_URL`: `https://keystore.web5.fans` (Your actual production domain).
-3.  **Deploy**.
-4.  **Assign Domain**: Go to Settings -> Domains and assign `keystore.web5.fans`.
+7.  **Deploy**.
+8.  **Assign Domain**: Go to Settings -> Domains and assign `keystore.web5.fans`.
 
-### Step 3: Deploy Console (Host App)
+### Step 4: Deploy Console
 
 1.  **Import Project** -> Root Directory: `apps/console`.
-2.  **Environment Variables**:
-    *   `DID_MODULE_URL`: `https://did-module.web5.fans/assets/remoteEntry.js`
-    *   `PDS_MODULE_URL`: `https://pds-module.web5.fans/assets/remoteEntry.js`
-    *   `KEYSTORE_MODULE_URL`: `https://keystore.web5.fans/assets/remoteEntry.js`
-3.  **Deploy**.
+2.  **Project Name**: `modules-console` (or similar).
+3.  **Build Command**: `cd ../.. && npx turbo run build --filter=@web5-modules/console` (or rely on default if Vercel detects it correctly).
+4.  **Install Command**: `npm install`
+5. **Environment Variables**:
+    *   `VITE_DID_MODULE_URL`: `https://did-module.web5.fans/assets/remoteEntry.js`
+    *   `VITE_PDS_MODULE_URL`: `https://pds-module.web5.fans/assets/remoteEntry.js`
+    *   `VITE_KEYSTORE_MODULE_URL`: `https://keystore.web5.fans/assets/remoteEntry.js`
+6.  **Deploy**.
+7.  **Assign Domain**: Go to Settings -> Domains and assign `console.web5.fans`.
 
 ## 3. Preview Deployments (Bugfix / Feature Branches)
 

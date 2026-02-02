@@ -8,9 +8,9 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '')
 
-  const DID_MODULE_URL = env.DID_MODULE_URL || 'http://localhost:3002/assets/remoteEntry.js';
-  const PDS_MODULE_URL = env.PDS_MODULE_URL || 'http://localhost:3003/assets/remoteEntry.js';
-  const KEYSTORE_MODULE_URL = env.KEYSTORE_MODULE_URL || 'http://localhost:3001/assets/remoteEntry.js';
+  const DID_MODULE_URL = env.VITE_DID_MODULE_URL || 'http://localhost:3002/assets/remoteEntry.js';
+  const PDS_MODULE_URL = env.VITE_PDS_MODULE_URL || 'http://localhost:3003/assets/remoteEntry.js';
+  const KEYSTORE_MODULE_URL = env.VITE_KEYSTORE_MODULE_URL || 'http://localhost:3001/assets/remoteEntry.js';
 
   return {
     plugins: [
