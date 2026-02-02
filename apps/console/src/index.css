@@ -264,7 +264,7 @@ body {
   gap: var(--spacing-md);
 }
 
-.logo { height: 2rem; }
+.top-logo { height: 4rem; }
 
 /* Utils */
 .text-sm { font-size: 0.875rem; }

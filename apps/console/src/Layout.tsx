@@ -1,7 +1,6 @@
 
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
+import w5Logo from './assets/w5-logo.svg';
 import { useKeystore } from './contexts/KeystoreContext';
 import { usePds } from './contexts/PdsContext';
 import { Wifi, WifiOff, Key, Wallet, LogOut, Loader, Server } from 'lucide-react';
@@ -57,11 +56,8 @@ export function Layout() {
     <div className="container">
       <div className="header-bar">
         <div className="header-logos">
-          <a href="https://vitejs.dev" target="_blank">
-            <img src={viteLogo} className="logo" alt="Vite logo" />
-          </a>
-          <a href="https://react.dev" target="_blank">
-            <img src={reactLogo} className="logo react" alt="React logo" />
+          <a href="https://web5.fans" target="_blank">
+            <img src={w5Logo} className="top-logo" alt="Web5 fans logo" />
           </a>
           <h1>Web5 Console</h1>
         </div>
