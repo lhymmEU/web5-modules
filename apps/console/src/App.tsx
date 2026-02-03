@@ -12,7 +12,18 @@ import { PdsProvider } from './contexts/PdsContext';
 
 function App() {
   return (
-    <ccc.Provider>
+    <ccc.Provider
+      clientOptions={[
+        {
+          name: 'Testnet',
+          client: new ccc.ClientPublicTestnet(),
+        },
+        {
+          name: 'Mainnet',
+          client: new ccc.ClientPublicMainnet(),
+        },
+      ]}
+    >
       <KeystoreProvider>
         <PdsProvider>
           <Routes>
