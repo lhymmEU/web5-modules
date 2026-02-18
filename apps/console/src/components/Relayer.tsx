@@ -1,61 +1,34 @@
+import { useState, useEffect, useRef } from 'react'
+import { Loader, Play, Square, Server, Trash2, ChevronDown, ChevronRight, Code, Copy } from 'lucide-react'
+import { Firehose, type CommitEvent } from '@skyware/firehose'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { toast } from 'sonner'
+import type { FirehoseEvent } from '@/types'
 
-import { useState, useEffect, useRef } from 'react';
-import { Activity, Loader, Play, Square, Server, Trash2, ChevronDown, ChevronRight, Code } from 'lucide-react';
-import { Firehose, type CommitEvent } from '@skyware/firehose';
-
-interface FirehoseEvent {
-  id: string;
-  time: string;
-  repo: string;
-  ops: {
-    action: string;
-    path: string;
-    uri: string;
-    record?: any;
-    cid?: string;
-  }[];
-  raw: any; // Store the full raw message
-}
+const MAX_EVENTS = 100
 
 export function Relayer() {
-  const [relayerUrl, setRelayerUrl] = useState('relayer.bbsfans.dev');
-  const [isConnected, setIsConnected] = useState(false);
-  const [events, setEvents] = useState<FirehoseEvent[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
-  
-  const firehoseRef = useRef<Firehose | null>(null);
-  const eventsEndRef = useRef<HTMLDivElement>(null);
+  const [relayerUrl, setRelayerUrl] = useState('relayer.bbsfans.dev')
+  const [isConnected, setIsConnected] = useState(false)
+  const [events, setEvents] = useState<FirehoseEvent[]>([])
+  const [isRunning, setIsRunning] = useState(false)
+  const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({})
+  const firehoseRef = useRef<Firehose | null>(null)
 
   const toggleExpand = (id: string) => {
-    setExpandedEvents(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
-  const scrollToBottom = () => {
-    eventsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    if (isRunning) {
-      scrollToBottom();
-    }
-  }, [events]);
+    setExpandedEvents(prev => ({ ...prev, [id]: !prev[id] }))
+  }
 
   const startFirehose = () => {
-    if (firehoseRef.current) return;
-
+    if (firehoseRef.current) return
     try {
-      const url = relayerUrl.startsWith('ws') ? relayerUrl : `wss://${relayerUrl}`;
-      console.log("Connecting to Relayer:", url);
-      
-      const firehose = new Firehose({
-        relay: url,
-      });
+      const url = relayerUrl.startsWith('ws') ? relayerUrl : `wss://${relayerUrl}`
+      const firehose = new Firehose({ relay: url })
 
-      firehose.on("commit", (message: CommitEvent) => {
+      firehose.on('commit', (message: CommitEvent) => {
         const newEvent: FirehoseEvent = {
           id: Math.random().toString(36).substring(7),
           time: new Date().toLocaleTimeString(),
@@ -64,210 +37,138 @@ export function Relayer() {
             action: op.action,
             path: op.path,
             uri: `at://${message.repo}/${op.path}`,
-            record: (op as any).record,
-            cid: (op as any).cid
+            record: (op as unknown as Record<string, unknown>).record,
+            cid: (op as unknown as Record<string, unknown>).cid as string | undefined,
           })),
-          raw: message
-        };
+          raw: message,
+        }
+        setEvents(prev => [newEvent, ...prev].slice(0, MAX_EVENTS))
+      })
 
-        setEvents(prev => [newEvent, ...prev].slice(0, 100)); // Keep last 100 events
-      });
+      firehose.on('open', () => setIsConnected(true))
+      firehose.on('close', () => { setIsConnected(false); setIsRunning(false); firehoseRef.current = null })
+      firehose.on('error', () => { setIsConnected(false); setIsRunning(false); firehoseRef.current = null })
 
-      firehose.on("open", () => {
-        setIsConnected(true);
-      });
-
-      firehose.on("close", () => {
-        setIsConnected(false);
-        setIsRunning(false);
-        firehoseRef.current = null;
-      });
-
-      firehose.on("error", (err: any) => {
-        console.error("Firehose error:", err);
-        setIsConnected(false);
-        setIsRunning(false);
-        firehoseRef.current = null;
-      });
-
-      firehoseRef.current = firehose;
-      setIsRunning(true);
-      firehose.start();
+      firehoseRef.current = firehose
+      setIsRunning(true)
+      firehose.start()
     } catch (e) {
-      console.error("Failed to start firehose:", e);
-      alert("Failed to connect to Relayer: " + (e instanceof Error ? e.message : String(e)));
+      toast.error('Failed to connect: ' + (e instanceof Error ? e.message : String(e)))
     }
-  };
+  }
 
   const stopFirehose = () => {
     if (firehoseRef.current) {
-      try {
-        firehoseRef.current.close();
-      } catch (e) {
-        console.error("Error stopping firehose:", e);
-      }
-      firehoseRef.current = null;
-      setIsRunning(false);
-      setIsConnected(false);
+      try { firehoseRef.current.close() } catch { /* ignore */ }
+      firehoseRef.current = null
+      setIsRunning(false)
+      setIsConnected(false)
     }
-  };
+  }
 
-  const clearEvents = () => {
-    setEvents([]);
-  };
-
-  useEffect(() => {
-    return () => {
-      stopFirehose();
-    };
-  }, []);
+  useEffect(() => () => { stopFirehose() }, [])
 
   return (
-    <div className="container">
-      <div className="flex items-center gap-md mb-lg">
-        <div className="bg-primary-light p-sm rounded text-primary" style={{ background: '#e0e7ff', color: '#4338ca' }}>
-          <Activity size={24} />
-        </div>
-        <div>
-          <h2 className="m-0 text-lg">Relayer Firehose</h2>
-          <div className="text-muted text-sm">Subscribe to real-time event stream from AT Protocol Relayer</div>
-        </div>
-      </div>
-
-      <div className="flex-col gap-lg">
-        <div className="card">
-          <div className="flex-col gap-md">
-            <div className="input-group vertical">
-              <label className="text-sm font-medium text-muted mb-xs block">Relayer Address</label>
-              <div className="flex gap-sm items-center">
-                <div className="flex-1 relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted flex items-center">
-                    <Server size={16} />
-                  </div>
-                  <input 
-                    className="input pl-10 h-9" 
-                    placeholder="relayer.bbsfans.dev" 
-                    value={relayerUrl}
-                    onChange={(e) => setRelayerUrl(e.target.value)}
-                    disabled={isRunning}
-                  />
-                </div>
-                <div className="flex shrink-0">
-                  {!isRunning ? (
-                    <button 
-                      className="btn btn-primary h-9"
-                      onClick={startFirehose}
-                    >
-                      <Play size={16} /> Start
-                    </button>
-                  ) : (
-                    <button 
-                      className="btn btn-danger h-9"
-                      onClick={stopFirehose}
-                    >
-                      <Square size={16} /> Stop
-                    </button>
-                  )}
-                </div>
-              </div>
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <Server className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-10"
+                placeholder="relayer.bbsfans.dev"
+                value={relayerUrl}
+                onChange={(e) => setRelayerUrl(e.target.value)}
+                disabled={isRunning}
+              />
             </div>
-
-          <div className="flex justify-between items-center pt-md border-t border-slate-100">
-            <div className="flex items-center gap-sm">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-success animate-pulse' : 'bg-slate-300'}`}></div>
-              <span className="text-sm font-medium">
-                {isConnected ? 'Connected' : isRunning ? 'Connecting...' : 'Disconnected'}
-              </span>
-            </div>
-            <button 
-              className="btn btn-sm btn-secondary"
-              onClick={clearEvents}
-              disabled={events.length === 0}
-            >
-              <Trash2 size={14} /> Clear Log
-            </button>
+            {!isRunning ? (
+              <Button onClick={startFirehose}><Play className="h-4 w-4" /> Start</Button>
+            ) : (
+              <Button variant="destructive" onClick={stopFirehose}><Square className="h-4 w-4" /> Stop</Button>
+            )}
           </div>
-        </div>
-      </div>
+          <div className="flex justify-between items-center pt-3 border-t">
+            <div className="flex items-center gap-2">
+              <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+              <span className="text-sm">{isConnected ? 'Connected' : isRunning ? 'Connecting...' : 'Disconnected'}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setEvents([])} disabled={events.length === 0}>
+              <Trash2 className="h-3.5 w-3.5" /> Clear
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="flex-col gap-sm">
+      <div className="space-y-2">
         {events.length === 0 ? (
-          <div className="card text-center py-xl border-dashed">
-            <div className="text-muted mb-sm">
-              {isRunning ? 'Waiting for events...' : 'Click "Start" to begin receiving events.'}
-            </div>
-            {isRunning && <Loader size={24} className="spin mx-auto opacity-20" />}
-          </div>
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center text-muted-foreground text-sm">
+              {isRunning ? (
+                <><Loader className="h-5 w-5 animate-spin mx-auto mb-2 opacity-30" />Waiting for events...</>
+              ) : (
+                'Click "Start" to begin receiving events.'
+              )}
+            </CardContent>
+          </Card>
         ) : (
-          <div className="flex flex-col gap-sm">
-            {events.map((event) => (
-              <div key={event.id} className="card p-0 overflow-hidden hover:border-primary transition-colors">
-                {/* Header - Clickable to toggle expand */}
-                <div 
-                  className="p-md cursor-pointer flex justify-between items-start bg-slate-50/50 hover:bg-slate-50 transition-colors"
-                  onClick={() => toggleExpand(event.id)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-sm mb-xs">
-                      {expandedEvents[event.id] ? <ChevronDown size={14} className="text-muted" /> : <ChevronRight size={14} className="text-muted" />}
-                      <div className="text-xs font-bold text-primary font-mono truncate" title={event.repo}>
-                        {event.repo}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-xs ml-5">
-                      {event.ops.map((op, idx) => (
-                        <div key={idx} className="flex items-center gap-sm text-[10px]">
-                          <span className={`font-bold uppercase px-1 rounded ${
-                            op.action === 'create' ? 'bg-green-100 text-green-700' :
-                            op.action === 'update' ? 'bg-blue-100 text-blue-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {op.action}
-                          </span>
-                          <span className="text-muted truncate font-mono">
-                            {op.path}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+          events.map((event) => (
+            <Card key={event.id} className="p-0 overflow-hidden hover:border-primary/50 transition-colors">
+              <div
+                className="p-3 cursor-pointer flex justify-between items-start bg-muted/30 hover:bg-muted/50 transition-colors"
+                onClick={() => toggleExpand(event.id)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {expandedEvents[event.id] ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <span className="text-xs font-semibold text-primary font-mono truncate">{event.repo}</span>
                   </div>
-                  <div className="text-[10px] text-muted font-mono whitespace-nowrap bg-white border border-slate-200 px-1.5 py-0.5 rounded ml-sm">
-                    {event.time}
+                  <div className="flex flex-col gap-0.5 ml-5">
+                    {event.ops.map((op, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 text-[10px]">
+                        <Badge variant={op.action === 'create' ? 'default' : op.action === 'update' ? 'secondary' : 'destructive'} className="text-[10px] px-1 py-0 h-4 uppercase">
+                          {op.action}
+                        </Badge>
+                        <span className="text-muted-foreground truncate font-mono">{op.path}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                {/* Expanded Content - JSON Details */}
-                {expandedEvents[event.id] && (
-                  <div className="p-md border-t border-slate-100 bg-white">
-                    <div className="flex items-center gap-sm mb-sm text-xs font-medium text-muted">
-                      <Code size={12} /> Full Event Data
-                    </div>
-                    <div className="relative">
-                      <pre className="text-[11px] font-mono bg-slate-900 text-slate-300 p-sm rounded overflow-x-auto max-h-[300px] leading-relaxed">
-                        {JSON.stringify(event.raw, (_key, value) => {
-                          if (value instanceof Uint8Array) return `[Uint8Array ${value.length}]`;
-                          return value;
-                        }, 2)}
-                      </pre>
-                      <button 
-                        className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(JSON.stringify(event.raw, null, 2));
-                        }}
-                        title="Copy JSON"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap ml-2">{event.time}</span>
               </div>
-            ))}
-          </div>
+
+              {expandedEvents[event.id] && (
+                <div className="p-3 border-t bg-background">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                      <Code className="h-3 w-3" /> Full Event Data
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(JSON.stringify(event.raw, null, 2))
+                        toast.success('Copied to clipboard')
+                      }}
+                    >
+                      <Copy className="h-3 w-3" /> Copy
+                    </Button>
+                  </div>
+                  <pre className="text-[11px] font-mono bg-zinc-950 text-zinc-300 p-3 rounded-md overflow-x-auto max-h-[300px] leading-relaxed">
+                    {JSON.stringify(event.raw, (_key, value) => {
+                      if (value instanceof Uint8Array) return `[Uint8Array ${value.length}]`
+                      return value
+                    }, 2)}
+                  </pre>
+                </div>
+              )}
+            </Card>
+          ))
         )}
       </div>
     </div>
-  </div>
-  );
+  )
 }

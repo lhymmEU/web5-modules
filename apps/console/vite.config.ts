@@ -1,11 +1,10 @@
 import { defineConfig, loadEnv } from 'vite'
+import path from 'path'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import federation from '@originjs/vite-plugin-federation'
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '')
 
   const DID_MODULE_URL = env.VITE_DID_MODULE_URL || 'http://localhost:3002/assets/remoteEntry.js';
@@ -15,6 +14,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      tailwindcss(),
       federation({
         name: 'console_host',
         remotes: {
@@ -32,6 +32,11 @@ export default defineConfig(({ mode }) => {
         }
       })
     ],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
     server: {
       port: 3000,
       strictPort: true,

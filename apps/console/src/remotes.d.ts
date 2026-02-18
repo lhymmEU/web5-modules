@@ -40,7 +40,7 @@ declare module 'did_module/logic' {
       newDidKey: string
     ): Promise<string>;
 
-    export async function updateHandle(
+    export function updateHandle(
       signer: ccc.Signer,
       args: string,
       handle: string
@@ -107,7 +107,7 @@ declare module 'did_module/logic' {
     export type userProfile = {
       uri: string;
       cid: string;
-      value: Record<string, any>;
+      value: Record<string, unknown>;
     }
 
     export function fetchUserProfile(did: string, pdsAPIUrl: string): Promise<userProfile | null>;
@@ -134,7 +134,7 @@ declare module 'did_module/logic' {
       records: {
         uri: string;
         cid: string;
-        value: Record<string, any>;
+        value: Record<string, unknown>;
       }[];
     };
 
@@ -153,7 +153,7 @@ declare module 'did_module/logic' {
 
     export type RecordType = {
       $type: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   
     export function writePDS(
