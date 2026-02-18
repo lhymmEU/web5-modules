@@ -40,3 +40,6 @@ keystore 拥有自己的Web UI，类似一个网页钱包，用户可以直接�
 最后会有一个Demo网站，用于展示Web5 Modules的功能。
 该网站本身相当于一个没有业务逻辑的Web5应用，作为Demo展示了Web5 Modules的功能。
 实现一些工具属性的功能，比如用户注册、登录、DID管理，PDS数据读写等。
+
+## Build with Hot Reload
+pnpm build && (pnpm --filter @web5-modules/keystore preview & pnpm --filter @web5-modules/did preview & pnpm --filter @web5-modules/pds preview &) && pnpm dev:console
