@@ -82,4 +82,44 @@ export const concepts = {
       { term: 'Commit Event', definition: 'A notification that a record was created, updated, or deleted in a repository.' },
     ],
   },
+  playground: {
+    title: 'The Identity Quest',
+    subtitle: 'Master the building blocks of self-sovereign identity.',
+    chapters: [
+      {
+        id: 'sign',
+        number: 'I',
+        title: 'The Secret Message',
+        narrative: 'You hold a private key — a secret only you know. Prove a message is yours by signing it. No passwords, no authority. Just math.',
+        completion: 'You signed your first message. Your private key created a unique cryptographic proof that only you could have produced.',
+      },
+      {
+        id: 'verify',
+        number: 'II',
+        title: 'Trust Without Authority',
+        narrative: 'Your handler received the message. Can they trust it? Using only your public DID key, they can verify the signature — without ever seeing your secret. This is how trust works without a central authority.',
+        completion: 'You verified a signature using only a public key. Trust established — no middleman required.',
+      },
+      {
+        id: 'create-did',
+        number: 'III',
+        title: 'Forging Your On-Chain Identity',
+        narrative: 'Keys are ephemeral. To make your identity permanent and tamper-proof, anchor it on the CKB blockchain. Your DID becomes an identity no one can take from you.',
+        completion: 'Your DID is now anchored on the blockchain. A permanent, tamper-proof identity that belongs to you alone.',
+      },
+      {
+        id: 'manage-did',
+        number: 'IV',
+        title: 'Sovereign Self',
+        narrative: 'Your identity is alive. Update your handle, rotate your keys, transfer ownership, or destroy it entirely. Full sovereignty means full control.',
+        completion: 'You have exercised full sovereignty over your identity — updating, transferring, and destroying at will.',
+        subtasks: [
+          { id: 'updateKey', label: 'Update atproto key' },
+          { id: 'updateHandle', label: 'Update handle' },
+          { id: 'transfer', label: 'Transfer DID' },
+          { id: 'destroy', label: 'Destroy DID cell' },
+        ],
+      },
+    ],
+  },
 } as const
