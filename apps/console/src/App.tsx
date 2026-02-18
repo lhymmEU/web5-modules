@@ -2,9 +2,8 @@ import { Routes, Route } from 'react-router-dom'
 import { ccc } from '@ckb-ccc/connector-react'
 import { Layout } from './Layout'
 import { OverviewPage } from './pages/OverviewPage'
-import { KeysPage } from './pages/KeysPage'
-import { DidsPage } from './pages/DidsPage'
-import { PdsPage } from './pages/PdsPage'
+import { IdentityPage } from './pages/IdentityPage'
+import { PlaygroundPage } from './pages/PlaygroundPage'
 import { ExplorerPage } from './pages/ExplorerPage'
 import { FeedPage } from './pages/FeedPage'
 import { KeystoreProvider } from './contexts/KeystoreContext'
@@ -23,9 +22,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<OverviewPage />} />
-              <Route path="keys" element={<KeysPage />} />
-              <Route path="dids" element={<DidsPage />} />
-              <Route path="pds" element={<PdsPage />} />
+              <Route path="identity" element={<IdentityPage />} />
+              <Route path="playground" element={<PlaygroundPage />} />
               <Route path="explorer" element={<ExplorerPage />} />
               <Route path="feed" element={<FeedPage />} />
             </Route>

@@ -1,4 +1,4 @@
-import { Home, Shield, Fingerprint, Server, Search, Activity } from 'lucide-react'
+import { Home, Rocket, Beaker, Search, Activity } from 'lucide-react'
 import { useLocation, Link } from 'react-router-dom'
 import {
   Sidebar,
@@ -14,10 +14,9 @@ import {
 } from '@/components/ui/sidebar'
 
 const navItems = [
-  { title: 'Overview', url: '/', icon: Home },
-  { title: 'Keys & Identity', url: '/keys', icon: Shield },
-  { title: 'Decentralized IDs', url: '/dids', icon: Fingerprint },
-  { title: 'Personal Data', url: '/pds', icon: Server },
+  { title: 'Welcome', url: '/', icon: Home },
+  { title: 'Build Your Identity', url: '/identity', icon: Rocket },
+  { title: 'Playground', url: '/playground', icon: Beaker },
   { title: 'Explorer', url: '/explorer', icon: Search },
   { title: 'Live Feed', url: '/feed', icon: Activity },
 ]

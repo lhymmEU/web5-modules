@@ -1,45 +1,38 @@
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Shield, Fingerprint, Server, Search, Activity, ArrowRight, CheckCircle, XCircle } from 'lucide-react'
+import { Rocket, Beaker, Search, Activity, ArrowRight, CheckCircle, XCircle } from 'lucide-react'
 import { useKeystore } from '@/contexts/KeystoreContext'
 import { useCkbWallet } from '@/hooks/use-ckb-wallet'
 
 const modules = [
   {
-    title: 'Keys & Identity',
-    description: 'Learn about cryptographic keys and how they form the basis of self-sovereign identity.',
-    icon: Shield,
-    url: '/keys',
+    title: 'Build Your Identity',
+    description: 'Set up your keystore, create a DID on CKB, register on a PDS, and sign in -- all in one guided flow.',
+    icon: Rocket,
+    url: '/identity',
     step: 1,
   },
   {
-    title: 'Decentralized IDs',
-    description: 'Create a DID on the CKB blockchain -- your portable, self-owned identity.',
-    icon: Fingerprint,
-    url: '/dids',
+    title: 'Playground',
+    description: 'Experiment with cryptographic signing, manage your DIDs, and explore advanced operations.',
+    icon: Beaker,
+    url: '/playground',
     step: 2,
-  },
-  {
-    title: 'Personal Data Server',
-    description: 'Register on a PDS and manage your data in the AT Protocol ecosystem.',
-    icon: Server,
-    url: '/pds',
-    step: 3,
   },
   {
     title: 'Explorer',
     description: 'Browse and inspect any user\'s public data repositories.',
     icon: Search,
     url: '/explorer',
-    step: 4,
+    step: 3,
   },
   {
     title: 'Live Feed',
     description: 'Watch real-time events streaming across the AT Protocol network.',
     icon: Activity,
     url: '/feed',
-    step: 5,
+    step: 4,
   },
 ]
 

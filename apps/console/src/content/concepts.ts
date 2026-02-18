@@ -1,8 +1,38 @@
 export const concepts = {
   keys: {
     title: 'Keys & Identity',
-    subtitle: 'Cryptographic keys are the foundation of your digital identity in Web5.',
-    description: 'In Web5, you control your identity through cryptographic key pairs. A private key lets you sign messages and prove ownership, while the public key (shared as a DID Key) lets others verify your identity. No passwords, no central authority.',
+    subtitle: 'Experience how cryptographic keys power your self-owned digital identity.',
+    description: 'In Web5, you control your identity through cryptographic key pairs. No passwords, no central authority — just math.',
+    sections: {
+      connection: {
+        title: 'Connect to Your Keystore',
+        description: 'Your keystore is a secure, isolated app that holds your private keys. It runs on its own origin so your keys never leave it. Connect to get started.',
+        disconnectedCta: 'Your keystore holds your private keys. Connect to get started.',
+      },
+      identity: {
+        title: 'Your Identity',
+        description: 'Your identity is a DID key — a decentralized identifier derived from your private key. It encodes your public key in a portable format that anyone can use to verify you.',
+        action: 'Reveal My DID Key',
+        explanation: 'This is your public identity. Anyone can use it to verify messages you sign.',
+      },
+      sign: {
+        title: 'Sign a Message',
+        description: 'Your private key can sign any message to create a cryptographic proof of authorship. The signature is unique to both the message and your key — change either, and verification fails.',
+      },
+      verify: {
+        title: 'Verify the Signature',
+        description: 'Anyone with your DID key can verify the signature — no private key needed. This is how trust works without a central authority.',
+        hint: 'Try changing the message — the signature won\'t match anymore.',
+      },
+      takeaways: {
+        title: 'What You Just Did',
+        points: [
+          'You proved your identity without a password or a central authority.',
+          'Anyone can verify your signatures using only your public DID key.',
+          'This is the foundation of decentralized identity in Web5.',
+        ],
+      },
+    },
     terms: [
       { term: 'Private Key', definition: 'A secret value that only you hold. Used to sign messages and prove identity.' },
       { term: 'Public Key', definition: 'Derived from your private key. Shared openly so others can verify your signatures.' },
