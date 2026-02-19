@@ -323,7 +323,9 @@ export function KeyStore() {
                        await navigator.clipboard.writeText(key.didKey);
                        setCopySuccessId(key.id);
                        setTimeout(() => setCopySuccessId(null), 1200);
-                     } catch {}
+                     } catch {
+                       // clipboard API unavailable
+                     }
                   }}
                 >
                   <Copy size={16} color={copySuccessId === key.id ? 'var(--success-color)' : 'currentColor'} />

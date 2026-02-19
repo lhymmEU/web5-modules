@@ -12,9 +12,17 @@
     "preview": "turbo run preview --parallel"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@originjs/vite-plugin-federation": "^1.4.1",
+    "@types/node": "^24.10.1",
     "autoprefixer": "^10.4.23",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
-    "turbo": "^2.3.0"
+    "turbo": "^2.3.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^6.0.0"
   }
 }

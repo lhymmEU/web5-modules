@@ -1,73 +1,42 @@
-# React + TypeScript + Vite
+# @web5-modules/pds
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A **Module Federation remote** that wraps ATProto Personal Data Server (PDS) operations. It exposes logic for account management, record read/write, and repository operations on an AT Protocol PDS.
 
-Currently, two official plugins are available:
+## Architecture role
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Type:** Module Federation remote (logic only, no UI)
+- **Port:** 3003
+- **Exposes:** `./logic`, `./constants`
+- **Consumes remote:** `keystore` (for signing via iframe bridge)
 
-## React Compiler
+## Exported API
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### `./logic` (`src/logic.ts`)
 
-## Expanding the ESLint configuration
+| Function | Description |
+|---|---|
+| `createAccount` | Create a new ATProto account on a PDS |
+| `login` | Authenticate with an existing PDS account |
+| `fetchUserProfile` | Fetch a DID's profile record |
+| `fetchRepoInfo` | Get repository metadata for a DID |
+| `fetchRepoRecords` | List records in a collection |
+| `createRecord` | Write a new record to the repo |
+| `exportRepoCar` | Export the full repo as a CAR file |
+| `importRepoCar` | Import a CAR file into the repo |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### `./constants` (`src/constants.ts`)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+List of available public PDS endpoints.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Shared dependencies
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `web5-api` — shared with the host via Module Federation
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev       # start dev server on port 3003
+pnpm build     # type-check + build (outputs remoteEntry.js)
+pnpm preview   # preview production build
+pnpm lint      # run ESLint
 ```

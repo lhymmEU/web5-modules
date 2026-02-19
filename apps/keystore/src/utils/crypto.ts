@@ -1,23 +1,7 @@
 import { Secp256k1Keypair, verifySignature as verifySignatureAtproto } from '@atproto/crypto';
+import { bytesToHex, hexToBytes } from '@web5-modules/utils';
 
-// Helper functions for hex conversion
-export function bytesToHex(bytes: Uint8Array): string {
-    const hex: string[] = [];
-    for (let i = 0; i < bytes.length; i++) {
-        const current = bytes[i] < 16 ? '0' + bytes[i].toString(16) : bytes[i].toString(16);
-        hex.push(current);
-    }
-    return hex.join('');
-}
-
-export function hexToBytes(hex: string): Uint8Array {
-    if (hex.length % 2 !== 0) throw new Error('hex string length must be even');
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-    }
-    return bytes;
-}
+export { bytesToHex, hexToBytes };
 
 export interface KeyPair {
   privateKey: string;

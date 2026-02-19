@@ -1,73 +1,36 @@
-# React + TypeScript + Vite
+# @web5-modules/did
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A **Module Federation remote** that implements DID operations for the `did:ckb` method. It exposes logic for creating, updating, transferring, and destroying DIDs anchored on the CKB (Nervos) blockchain.
 
-Currently, two official plugins are available:
+## Architecture role
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Type:** Module Federation remote (logic only, no UI)
+- **Port:** 3002
+- **Exposes:** `./logic`
 
-## React Compiler
+## Exported API (`./logic`)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+All functions are exported from `src/logic.ts`:
 
-## Expanding the ESLint configuration
+| Function | Description |
+|---|---|
+| `buildCreateTransaction` | Build a CKB transaction to create a new DID cell |
+| `sendCkbTransaction` | Sign and submit a CKB transaction |
+| `fetchDidCkbCellsInfo` | Fetch on-chain DID cell data for an address |
+| `destroyDidCell` | Destroy an existing DID cell |
+| `updateDidKey` | Update the key associated with a DID |
+| `updateHandle` | Update the handle/alias of a DID |
+| `transferDidCell` | Transfer a DID cell to a new owner |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Shared dependencies
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- `@ckb-ccc/ccc` — shared with the host via Module Federation to avoid duplicate instances
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Development
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev       # start dev server on port 3002
+pnpm build     # type-check + build (outputs remoteEntry.js)
+pnpm preview   # preview production build
+pnpm lint      # run ESLint
 ```

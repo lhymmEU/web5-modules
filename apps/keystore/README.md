@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# @web5-modules/keystore
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A **secure key management module** with a sandboxed Web UI. It runs in an isolated iframe and communicates with the host via a postMessage bridge, ensuring private keys never leave the iframe context.
 
-Currently, two official plugins are available:
+## Architecture role
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Type:** Module Federation remote + standalone Web UI
+- **Port:** 3001
+- **Exposes:** `./KeystoreClient`, `./constants`
 
-## React Compiler
+## Two entry points
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Entry | File | Purpose |
+|---|---|---|
+| `index.html` | Main keystore UI | Full key management interface (wallet) |
+| `bridge.html` | Postage bridge | Embedded in host via `<iframe>` for secure signing |
 
-## Expanding the ESLint configuration
+## Exported API
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### `KeystoreClient` (`./KeystoreClient`)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Client class consumed by the host app. Sends requests to the keystore iframe bridge via postMessage:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- `requestSign(data)` — request a signature from the sandboxed keystore
+- `requestPublicKey()` — get the active public key
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### `constants` (`./constants`)
+
+Shared configuration values (iframe URLs, message types).
+
+## Key source files
+
+```
+src/
+  KeystoreClient.ts     Module Federation export — host-side bridge client
+  bridge.ts             Iframe-side postMessage handler
+  constants.ts          Module Federation export — shared config constants
+  components/
+    KeyStore.tsx         Main keystore UI component
+    Signer.tsx           Signing request UI
+    WhitelistSettings.tsx Allowed origins management
+  utils/
+    crypto.ts            Key generation, signing, encryption utilities
+    storage.ts           LocalStorage key management
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev       # start dev server on port 3001
+pnpm build     # type-check + build (outputs both index + bridge entry points)
+pnpm preview   # preview production build
+pnpm lint      # run ESLint
 ```

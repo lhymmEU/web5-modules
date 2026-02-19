@@ -1,11 +1,11 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { AVAILABLE_PDS } from 'pds_module/constants'
 import { checkUsernameFormat, getDidByUsername } from 'pds_module/logic'
-import type { AtpAgent as AtpAgentType } from 'web5-api'
+import { AtpAgent } from 'web5-api'
 
 interface PdsContextType {
-  agent: AtpAgentType | null
+  agent: AtpAgent | null
   pdsUrl: string
   setPdsUrl: (url: string) => void
   availablePds: string[]
@@ -30,59 +30,63 @@ export function PdsProvider({ children }: { children: ReactNode }) {
   const [resolvedDid, setResolvedDid] = useState('')
   const [isResolving, setIsResolving] = useState(false)
   const [isAvailable, setIsAvailable] = useState(false)
-  const [agent, setAgent] = useState<AtpAgentType | null>(null)
 
+  // Persist to localStorage
   useEffect(() => {
     localStorage.setItem('web5_console_pds_url', pdsUrl)
+  }, [pdsUrl])
+
+  useEffect(() => {
     localStorage.setItem('web5_console_username', username)
-    
-    if (username && pdsUrl) {
-      setIsResolving(true)
-      if (!checkUsernameFormat(username)) {
-        setIsAvailable(false)
-        setResolvedDid('')
-        setIsResolving(false)
-        return
-      } else {
-        setIsAvailable(true)
-      }
-      getDidByUsername(username, pdsUrl).then((did: string | null) => {
-        setResolvedDid(did || '')
-        setIsResolving(false)
-      }).catch(() => {
-        setResolvedDid('')
-        setIsResolving(false)
-      })
-    } else {
+  }, [username])
+
+  // Resolve username availability
+  useEffect(() => {
+    if (!username || !pdsUrl) {
       setResolvedDid('')
+      return
     }
 
+    setIsResolving(true)
+    if (!checkUsernameFormat(username)) {
+      setIsAvailable(false)
+      setResolvedDid('')
+      setIsResolving(false)
+      return
+    }
+
+    setIsAvailable(true)
     let cancelled = false
-    ;(async () => {
-      try {
-        const serviceUrl = pdsUrl.startsWith('http') ? pdsUrl : `https://${pdsUrl}`
-        const mod: Record<string, unknown> = await import('web5-api')
-        const Ctor = typeof mod.AtpAgent === 'function'
-          ? (mod.AtpAgent as new (opts: { service: string }) => AtpAgentType)
-          : typeof mod.default === 'function'
-            ? (mod.default as new (opts: { service: string }) => AtpAgentType)
-            : null
-        if (!Ctor) {
-          throw new TypeError('web5-api exports do not include AtpAgent constructor')
+    getDidByUsername(username, pdsUrl)
+      .then((did: string | null) => {
+        if (!cancelled) {
+          setResolvedDid(did || '')
+          setIsResolving(false)
         }
-        const newAgent = new Ctor({ service: serviceUrl })
-        if (!cancelled) setAgent(newAgent)
-      } catch {
-        if (!cancelled) setAgent(null)
-      }
-    })()
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setResolvedDid('')
+          setIsResolving(false)
+        }
+      })
     return () => { cancelled = true }
   }, [pdsUrl, username])
 
+  // Create agent when pdsUrl changes
+  const agent = useMemo(() => {
+    try {
+      const serviceUrl = pdsUrl.startsWith('http') ? pdsUrl : `https://${pdsUrl}`
+      return new AtpAgent({ service: serviceUrl })
+    } catch {
+      return null
+    }
+  }, [pdsUrl])
+
   return (
-    <PdsContext.Provider value={{ 
+    <PdsContext.Provider value={{
       agent, pdsUrl, setPdsUrl, availablePds: AVAILABLE_PDS,
-      username, setUsername, resolvedDid, isResolving, isAvailable
+      username, setUsername, resolvedDid, isResolving, isAvailable,
     }}>
       {children}
     </PdsContext.Provider>

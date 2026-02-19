@@ -1,0 +1,27 @@
+export function bytesToHex(bytes: Uint8Array): string {
+  const hex: string[] = [];
+  for (let i = 0; i < bytes.length; i++) {
+    hex.push(bytes[i].toString(16).padStart(2, '0'));
+  }
+  return hex.join('');
+}
+
+export function hexToBytes(hex: string): Uint8Array {
+  if (hex.startsWith('0x')) hex = hex.slice(2);
+  if (hex.length % 2 !== 0) throw new Error('hex string length must be even');
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+export function hexFrom(bytes: Uint8Array): string {
+  return '0x' + bytesToHex(bytes);
+}
+
+export function bytesFrom(str: string | Uint8Array, encoding?: 'utf8' | 'hex'): Uint8Array {
+  if (typeof str !== 'string') return str;
+  if (encoding === 'hex') return hexToBytes(str);
+  return new TextEncoder().encode(str);
+}

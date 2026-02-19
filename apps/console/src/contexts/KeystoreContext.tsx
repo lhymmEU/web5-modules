@@ -52,6 +52,7 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useKeystore() {
   const context = useContext(KeystoreContext)
   if (!context) {

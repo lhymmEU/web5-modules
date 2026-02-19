@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# @web5-modules/console
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The **host application** and demo UI for the Web5 Modules monorepo. It consumes the three remote modules (`did`, `keystore`, `pds`) via Vite Module Federation and provides a unified interface for identity management, key management, and Personal Data Server interactions.
 
-Currently, two official plugins are available:
+## Architecture role
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Type:** Module Federation host
+- **Port:** 3000
+- **Consumes remotes:** `did_module` (3002), `keystore` (3001), `pds_module` (3003)
 
-## React Compiler
+## Pages
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Page | Description |
+|---|---|
+| Overview | Landing dashboard |
+| Identity | DID creation and management via did_module |
+| Explorer | Browse ATProto repo records |
+| Feed | Firehose feed viewer |
+| Playground | Interactive API playground |
 
-## Expanding the ESLint configuration
+## Key directories
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+  components/   UI components (DidManager, KeyManager, PdsManager, etc.)
+  contexts/     React contexts (KeystoreContext, PdsContext)
+  hooks/        Custom hooks (use-async-action, use-ckb-wallet, use-mobile)
+  pages/        Page-level route components
+  types/        Shared TypeScript types
+  lib/utils.ts  Tailwind class utility (cn)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Copy `.env.example` to `.env` and configure remote module URLs for non-localhost deployments:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+VITE_DID_MODULE_URL=http://localhost:3002/assets/remoteEntry.js
+VITE_PDS_MODULE_URL=http://localhost:3003/assets/remoteEntry.js
+VITE_KEYSTORE_MODULE_URL=http://localhost:3001/assets/remoteEntry.js
+```
+
+## Development
+
+```bash
+pnpm dev       # start dev server on port 3000
+pnpm build     # type-check + build
+pnpm preview   # preview production build
+pnpm lint      # run ESLint
 ```

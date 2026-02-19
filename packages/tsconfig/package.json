@@ -1,0 +1,11 @@
+{
+  "name": "@web5-modules/tsconfig",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./base.json": "./base.json",
+    "./app.json": "./app.json",
+    "./react-app.json": "./react-app.json",
+    "./node.json": "./node.json"
+  }
+}
