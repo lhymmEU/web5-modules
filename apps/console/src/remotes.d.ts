@@ -140,6 +140,21 @@ declare module 'did_module/logic' {
 
     export function fetchRepoRecords(did: string, collection: string, pdsAPIUrl: string, limit?: number, cursor?: string): Promise<RepoRecords | null>;
 
+    export type RepoListEntry = {
+      did: string;
+      head: string;
+      rev: string;
+      active: boolean;
+      status?: string;
+    };
+
+    export type RepoList = {
+      cursor?: string;
+      repos: RepoListEntry[];
+    };
+
+    export function listRepos(pdsAPIUrl: string, limit?: number, cursor?: string): Promise<RepoList | null>;
+
     export type RepoBlobs = {
       cursor?: string;
       cids: string[];

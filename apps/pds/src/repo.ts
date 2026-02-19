@@ -1,3 +1,40 @@
+export type RepoListEntry = {
+  did: string;
+  head: string;
+  rev: string;
+  active: boolean;
+  status?: string;
+};
+
+export type RepoList = {
+  cursor?: string;
+  repos: RepoListEntry[];
+};
+
+export async function listRepos(
+  pdsAPIUrl: string, limit?: number, cursor?: string,
+): Promise<RepoList | null> {
+  try {
+    const url = new URL(`https://${pdsAPIUrl}/xrpc/com.atproto.sync.listRepos`);
+    url.searchParams.append('limit', limit?.toString() || '10');
+    if (cursor) url.searchParams.append('cursor', cursor);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to list repos: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    return await response.json();
+  } catch (e) {
+    console.error('listRepos error:', e);
+    return null;
+  }
+}
+
 export type RepoBlobs = {
   cursor?: string;
   cids: string[];

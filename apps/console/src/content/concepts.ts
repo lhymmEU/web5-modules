@@ -64,12 +64,40 @@ export const concepts = {
   },
   explorer: {
     title: 'Data Explorer',
-    subtitle: 'Browse and inspect decentralized data repositories.',
-    description: 'The explorer lets you look up any user by handle or DID and browse their public repository data. You can see what collections they have, inspect individual records, and export their repository as a CAR file.',
+    subtitle: 'Resolve identities, inspect DID documents, and browse repository data on the decentralized network.',
+    description: 'Every user on the AT Protocol has a public identity anchored by a DID and a repository of data hosted on a Personal Data Server. The explorer walks you through resolving a handle to its DID, reading the DID document, viewing the user\'s profile, browsing their data collections, and exporting everything as a portable archive.',
+    sections: {
+      lookup: {
+        title: 'Resolve Identity',
+        description: 'Handles are human-readable names that map to cryptographic DIDs via a well-known endpoint. Enter a handle or DID to resolve.',
+      },
+      identity: {
+        title: 'DID Document',
+        description: 'The DID document is a public identity record anchored on the blockchain. It lists the user\'s verification keys, linked handles, and service endpoints — like a decentralized business card.',
+      },
+      profile: {
+        title: 'Profile Record',
+        description: 'The profile is typically the first record an app creates. It lives in the app.actor.profile collection under the record key "self" — stored on the user\'s PDS, not a central server.',
+      },
+      repository: {
+        title: 'Repository Data',
+        description: 'All user data is organized into collections — namespaced groups of records. Each record is addressable by its AT URI (at://did/collection/rkey).',
+      },
+      portability: {
+        title: 'Data Portability',
+        description: 'You can export an entire repository as a CAR (Content Addressable Archive) file and move it to a different PDS. Blobs are content-addressed binary data like images and files.',
+      },
+    },
     terms: [
-      { term: 'Record', definition: 'A single data entry in a collection, identified by a URI.' },
-      { term: 'CID', definition: 'Content Identifier -- a hash-based reference to a specific version of data.' },
+      { term: 'Handle', definition: 'A human-readable name (e.g. alice.pds.example.com) that resolves to a DID via .well-known/atproto-did.' },
+      { term: 'DID Document', definition: 'Public metadata for a DID: verification keys, aliases, and service endpoints.' },
+      { term: 'Verification Method', definition: 'A public key listed in the DID document, used to verify signatures from this identity.' },
+      { term: 'Service Endpoint', definition: 'A URL in the DID document pointing to where the user\'s data is hosted (e.g. their PDS).' },
+      { term: 'Record', definition: 'A single data entry in a collection, identified by an AT URI.' },
+      { term: 'CID', definition: 'Content Identifier — a hash-based reference to a specific version of data.' },
       { term: 'AT URI', definition: 'An address in the AT Protocol (at://did/collection/rkey) pointing to a specific record.' },
+      { term: 'CAR File', definition: 'Content Addressable Archive — a portable export format for an entire repository.' },
+      { term: 'Blob', definition: 'Binary data (images, files) stored alongside records, referenced by CID.' },
     ],
   },
   feed: {
