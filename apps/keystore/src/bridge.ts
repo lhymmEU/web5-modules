@@ -1,5 +1,5 @@
-import { signMessage, verifySignature } from './utils/crypto';
-import { getActiveKey, isOriginAllowed } from './utils/storage';
+import { signMessage, verifySignature, generateSecp256k1KeyPair } from './utils/crypto';
+import { getActiveKey, addKey, setActiveKey, isOriginAllowed } from './utils/storage';
 
 type BridgeRequest = {
   type: string;
@@ -89,6 +89,20 @@ window.addEventListener('message', async (event: MessageEvent) => {
       postReply(event, res);
     } catch {
       const res: BridgeResponse = { type: 'signMessage:result', requestId, ok: false, error: 'sign_failed' };
+      postReply(event, res);
+    }
+    return;
+  }
+
+  if (data.type === 'generateKey') {
+    try {
+      const keyPair = await generateSecp256k1KeyPair();
+      const entry = addKey({ ...keyPair, createdAt: Date.now() }, `Key (quest)`);
+      setActiveKey(entry.id);
+      const res: BridgeResponse = { type: 'generateKey:result', requestId, ok: true, didKey: keyPair.didKey };
+      postReply(event, res);
+    } catch {
+      const res: BridgeResponse = { type: 'generateKey:result', requestId, ok: false, error: 'generate_failed' };
       postReply(event, res);
     }
     return;

@@ -1,4 +1,4 @@
-export type ChapterId = 'sign' | 'verify' | 'create-did' | 'manage-did'
+export type ChapterId = 'sign' | 'verify' | 'manage-did'
 
 export interface SignData {
   message: string

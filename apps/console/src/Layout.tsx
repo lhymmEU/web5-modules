@@ -11,7 +11,7 @@ export function Layout() {
       <SidebarInset>
         <Header />
         <main className="flex-1 overflow-auto">
-          <div className="max-w-5xl align-start p-6">
+          <div className="max-w-5xl h-full align-start p-6">
             <Outlet />
           </div>
         </main>

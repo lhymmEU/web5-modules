@@ -22,9 +22,9 @@ export function ChapterCover({
       onClick={onClick}
       disabled={status === 'locked'}
       className={cn(
-        'relative flex flex-col items-center justify-between rounded-xl border-2 px-4 py-6 w-44 h-64 shrink-0 transition-all duration-300 text-center select-none',
+        'relative flex flex-col items-center justify-between rounded-xl border-2 px-4 py-6 w-44 h-full shrink-0 transition-all duration-300 text-center select-none',
         status === 'locked' && 'opacity-40 cursor-not-allowed border-muted bg-muted/30',
-        status === 'unlocked' && 'border-primary bg-background shadow-lg hover:shadow-xl hover:scale-[1.02] cursor-pointer',
+        status === 'unlocked' && 'border-primary bg-background shadow-none hover:scale-[1.02] cursor-pointer',
         status === 'completed' && 'border-primary/40 bg-primary/5 cursor-pointer hover:bg-primary/10',
       )}
     >

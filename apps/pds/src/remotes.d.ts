@@ -24,6 +24,7 @@ declare module 'keystore/KeystoreClient' {
         disconnect(): void;
         ping(): Promise<number>;
         getDIDKey(): Promise<string>;
+        generateKey(): Promise<string>;
         signMessage(message: Uint8Array): Promise<Uint8Array>;
         verifySignature(didKey: string, message: Uint8Array, signature: Uint8Array): Promise<boolean>;
     }

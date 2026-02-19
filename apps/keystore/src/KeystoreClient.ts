@@ -165,6 +165,20 @@ export class KeystoreClient {
     return res.didKey;
   }
 
+  public async generateKey(): Promise<string> {
+    const res = await this.request<BridgeResponse>({
+      type: 'generateKey',
+      requestId: crypto.randomUUID(),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to generate key');
+    }
+    if (typeof res.didKey !== 'string') {
+      throw new Error('Invalid DID key format');
+    }
+    return res.didKey;
+  }
+
   public async signMessage(message: Uint8Array): Promise<Uint8Array> {
     const res = await this.request<BridgeResponse>({
       type: 'signMessage',

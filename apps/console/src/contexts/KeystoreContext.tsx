@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { KeystoreClient } from 'keystore/KeystoreClient'
 import { KEY_STORE_BRIDGE_URL } from 'keystore/constants'
 
@@ -6,6 +6,7 @@ interface KeystoreContextType {
   client: KeystoreClient | null
   connected: boolean
   didKey: string | null
+  generateKey: () => Promise<string>
 }
 
 const KeystoreContext = createContext<KeystoreContextType | null>(null)
@@ -45,8 +46,15 @@ export function KeystoreProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const generateKey = useCallback(async () => {
+    if (!client) throw new Error('Keystore not connected')
+    const newKey = await client.generateKey()
+    setDidKey(newKey)
+    return newKey
+  }, [client])
+
   return (
-    <KeystoreContext.Provider value={{ client, connected, didKey }}>
+    <KeystoreContext.Provider value={{ client, connected, didKey, generateKey }}>
       {children}
     </KeystoreContext.Provider>
   )

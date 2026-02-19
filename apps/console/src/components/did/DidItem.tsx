@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Edit, ArrowRight, Trash2 } from 'lucide-react'
+import { Edit, ArrowRight, Trash2, KeyRound, Loader } from 'lucide-react'
 import type { didCkbCellInfo } from 'did_module/logic'
+import { useKeystore } from '@/contexts/KeystoreContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,10 +15,12 @@ export function DidItem({ item, onTransfer, onUpdateKey, onUpdateHandle, onDestr
   onDestroy: (args: string) => void
   processing: boolean
 }) {
+  const { generateKey, connected: keystoreConnected } = useKeystore()
   const [mode, setMode] = useState<'view' | 'transfer' | 'update'>('view')
   const [transferAddr, setTransferAddr] = useState('')
   const [newKey, setNewKey] = useState('')
   const [newHandle, setNewHandle] = useState('')
+  const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
     try {
@@ -72,7 +75,26 @@ export function DidItem({ item, onTransfer, onUpdateKey, onUpdateHandle, onDestr
         {mode === 'update' && (
           <div className="rounded-md border bg-muted/50 p-3 space-y-4">
             <div className="space-y-2">
-              <div className="text-sm font-medium">Update Atproto Key</div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">Update Atproto Key</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-7"
+                  disabled={!keystoreConnected || generating || processing}
+                  onClick={async () => {
+                    setGenerating(true)
+                    try {
+                      const key = await generateKey()
+                      setNewKey(key)
+                    } catch { /* handled by keystore */ }
+                    setGenerating(false)
+                  }}
+                >
+                  {generating ? <Loader className="h-3 w-3 animate-spin" /> : <KeyRound className="h-3 w-3" />}
+                  Generate New Key
+                </Button>
+              </div>
               <div className="flex gap-2">
                 <Input placeholder="did:key:..." value={newKey} onChange={(e) => setNewKey(e.target.value)} className="flex-1" />
                 <Button disabled={!newKey || processing} onClick={() => onUpdateKey(item.args, newKey)}>Update</Button>

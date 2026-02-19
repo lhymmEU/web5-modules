@@ -83,8 +83,8 @@ export const concepts = {
     ],
   },
   playground: {
-    title: 'The Identity Quest',
-    subtitle: 'Master the building blocks of self-sovereign identity.',
+    title: 'Quests',
+    subtitle: 'Master the building blocks of Web5.',
     chapters: [
       {
         id: 'sign',
@@ -101,15 +101,8 @@ export const concepts = {
         completion: 'You verified a signature using only a public key. Trust established — no middleman required.',
       },
       {
-        id: 'create-did',
-        number: 'III',
-        title: 'Forging Your On-Chain Identity',
-        narrative: 'Keys are ephemeral. To make your identity permanent and tamper-proof, anchor it on the CKB blockchain. Your DID becomes an identity no one can take from you.',
-        completion: 'Your DID is now anchored on the blockchain. A permanent, tamper-proof identity that belongs to you alone.',
-      },
-      {
         id: 'manage-did',
-        number: 'IV',
+        number: 'III',
         title: 'Sovereign Self',
         narrative: 'Your identity is alive. Update your handle, rotate your keys, transfer ownership, or destroy it entirely. Full sovereignty means full control.',
         completion: 'You have exercised full sovereignty over your identity — updating, transferring, and destroying at will.',

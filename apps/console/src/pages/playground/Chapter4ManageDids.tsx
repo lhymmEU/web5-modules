@@ -26,7 +26,8 @@ export function Chapter4ManageDids({ ops, onOp }: { ops: DidOps; onOp: (op: keyo
   } = useDidOperations()
 
   const walletDone = !!wallet && !!address
-  const subtasks = CHAPTERS[3].subtasks
+  const manageChapter = CHAPTERS.find((c) => c.id === 'manage-did')!
+  const subtasks = manageChapter.subtasks
 
   return (
     <div className="space-y-4">
