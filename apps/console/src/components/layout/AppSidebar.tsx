@@ -14,11 +14,11 @@ import {
 } from '@/components/ui/sidebar'
 
 const navItems = [
-  { title: 'Welcome', url: '/', icon: Home },
-  { title: 'Build Your Identity', url: '/identity', icon: Rocket },
-  { title: 'Playground', url: '/playground', icon: Beaker },
-  { title: 'Explorer', url: '/explorer', icon: Search },
-  { title: 'Live Feed', url: '/feed', icon: Activity },
+  { title: 'Welcome', url: '/', icon: Home, isDisabled: false },
+  { title: 'Build Your Identity', url: '/identity', icon: Rocket, isDisabled: false },
+  { title: 'Playground', url: '/playground', icon: Beaker, isDisabled: false },
+  { title: 'Explorer', url: '/explorer', icon: Search, isDisabled: false },
+  { title: 'Live Feed', url: '/feed', icon: Activity, isDisabled: true },
 ]
 
 export function AppSidebar() {
@@ -40,11 +40,18 @@ export function AppSidebar() {
                 const isActive = location.pathname === item.url
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
+                    <SidebarMenuButton asChild={!item.isDisabled} isActive={isActive} disabled={item.isDisabled}>
+                      {item.isDisabled ? (
+                        <>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </>
+                      ) : (
+                        <Link to={item.url}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
