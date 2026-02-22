@@ -59,7 +59,7 @@ Pure-logic module (no UI) for `did:ckb` identities on the Nervos CKB blockchain.
 | `buildCreateTransaction` | Builds a CKB transaction that creates a new DID cell on-chain |
 | `fetchDidCkbCellsInfo` | Queries all DID cells owned by the current signer |
 | `updateDidKey` | Updates the signing key associated with a DID |
-| `updateHandle` | Sets `alsoKnownAs` and registers the handle with a PDS |
+| `updateHandle` | Updates the on-chain DID document's `alsoKnownAs` (handle) and PDS service endpoint |
 | `destroyDidCell` / `transferDidCell` | Removes or transfers DID ownership |
 
 **Stack**: `@ckb-ccc/ccc` (CKB SDK), `@scure/base` (base32 encoding).
@@ -202,7 +202,7 @@ Web5 Modules 是一个单仓库（monorepo）项目，提供构建 Web5 应用�
 | `buildCreateTransaction` | 构建 CKB 交易，在链上创建新的 DID Cell |
 | `fetchDidCkbCellsInfo` | 查询当前签名者拥有的所有 DID Cell |
 | `updateDidKey` | 更新 DID 关联的签名密钥 |
-| `updateHandle` | 设置 `alsoKnownAs` 并在 PDS 注册 |
+| `updateHandle` | 更新链上 DID 文档中的 `alsoKnownAs`（handle）和 PDS 服务端点 |
 | `destroyDidCell` / `transferDidCell` | 销毁或转移 DID 所有权 |
 
 **技术栈**：`@ckb-ccc/ccc`（CKB SDK）、`@scure/base`（base32 编码）。
